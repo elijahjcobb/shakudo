@@ -10,6 +10,8 @@ process and Alloy.
 ### src
 The `src` directory holds the source to display blocks, and an editor to the user. It communicates with the main
 electron process.
+### shakudo-integration.
+You can find the repo for the [shakudo-integration here](https://github.com/elijahjcobb/shakudo-integration). On top of that, the most recent build from that project can be found in the [releases page](https://github.com/elijahjcobb/shakudo-integration/releases) on the repo. This repo simply abstracts away the Alloy API in Java over a pipe.
 
 ## History
 This project was greatly reduced because I found a library to manage the editor and blockly provides lots of helpful
