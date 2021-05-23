@@ -1,0 +1,81 @@
+/**
+ * Elijah Cobb
+ * elijah@elijahcobb.com
+ * elijahcobb.com
+ * github.com/elijahjcobb
+ */
+
+@import "../variables";
+
+$barHeight: 48px;
+
+.TopBar {
+
+	width: 100vw;
+	-webkit-app-region: drag;
+	background: $black;
+	height: $barHeight;
+	display: flex;
+	align-items: center;
+	padding: $barHeight / 3;
+
+	.title {
+		margin-left: 5px;
+		font-weight: bold;
+		font-size: $barHeight / 2.5;
+	}
+
+	.navButtons {
+		-webkit-app-region: no-drag;
+		width: $barHeight * 2;
+		height: $barHeight;
+		right: 0;
+		position: fixed;
+	}
+
+	.navButtons, .closeContainer, .minimizeContainer {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.closeContainer, .minimizeContainer {
+		width: $barHeight;
+		height: $barHeight;
+	}
+
+	.close, .minimize {
+		width: $barHeight / 2;
+		height: $barHeight / 2;
+		transition: transform 250ms ease-in-out;
+	}
+
+	.close {
+		color: $red;
+	}
+
+	.minimize {
+		color: $yellow;
+	}
+
+	.closeContainer:hover {
+
+		background: $red;
+
+		.close {
+			color: $black;
+			transform: scale(1.25);
+		}
+	}
+
+	.minimizeContainer:hover {
+
+		background: $yellow;
+
+		.minimize {
+			color: $black;
+			transform: scale(1.25);
+		}
+	}
+
+}

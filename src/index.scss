@@ -1,11 +1,23 @@
-/*
+/**
  * Elijah Cobb
+ * elijah@elijahcobb.com
+ * elijahcobb.com
  * github.com/elijahjcobb
- * ejcobb@mtu.edu
  */
+
+@import "variables";
 
 * {
 	margin: 0;
 	padding: 0;
 	box-sizing: border-box;
+}
+
+@import url('https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100;0,400;0,700;1,100;1,400;1,700&display=swap');
+
+body {
+	background: $background;
+	color: $white;
+	font-family: 'Roboto', sans-serif;
+	-webkit-user-select: none;
 }

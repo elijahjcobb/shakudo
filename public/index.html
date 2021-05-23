@@ -1,15 +1,46 @@
-<!--    Elijah Cobb               -->
-<!--    github.com/elijahjcobb    -->
-<!--    ejcobb@mtu.edu            -->
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>React Electron App</title>
-  </head>
-  <body>
-    <noscript>You need to enable JavaScript to run this app.</noscript>
-    <div id="root"></div>
-  </body>
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<meta name="theme-color" content="#000000" />
+	<meta name="description" content="Web site created using create-react-app"/>
+	<link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
+	<link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
+	<title>Shakudo</title>
+</head>
+<body class="App">
+	<div class="main">
+		<div id="editor" class="editor"></div>
+		<div class="right">
+			<div class="tabs">
+				<div class="tab active"><span>Block 1</span></div>
+				<div class="tab"><span>Block 2</span></div>
+				<div class="tab"><span>Block 3</span></div>
+				<div class="tab"><span>Block 4</span></div>
+				<div class="tab"><span>Block 5</span></div>
+				<div class="tab"><span>Block 6</span></div>
+				<div class="tab"><span>Block 7</span></div>
+				<div class="tab"><span>Block 8</span></div>
+			</div>
+			<div id="blocklyDiv"></div>
+		</div>
+	</div>
+</body>
+<div id="alert">
+	<span id="alert-title">Compile Error</span>
+	<p id="alert-content">This is the content.</p>
+</div>
 </html>
+<xml id="toolbox" style="display: none">
+	<block type="all"></block>
+	<block type="some"></block>
+	<block type="no"></block>
+	<block type="one"></block>
+	<block type="lone"></block>
+	<block type="and"></block>
+	<block type="or"></block>
+	<block type="not"></block>
+	<block type="implies"></block>
+	<block type="iff"></block>
+</xml>

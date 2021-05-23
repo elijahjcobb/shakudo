@@ -1,0 +1,144 @@
+/**
+ * Elijah Cobb
+ * elijah@elijahcobb.com
+ * elijahcobb.com
+ * github.com/elijahjcobb
+ */
+
+@import "./variables";
+@import url('https://fonts.googleapis.com/css2?family=Roboto+Mono&display=swap');
+
+.App {
+
+	height: 100vh;
+
+	.main {
+		height: 100%;
+		width: 100%;
+		display: flex;
+	}
+
+	.right {
+		width: 40%;
+		height: 100%;
+		border: none;
+		outline: none;
+		stroke-width: 0;
+		display: flex;
+		flex-direction: column;
+	}
+
+	.tabs {
+		display: flex;
+		height: 62px;
+		width: 100%;
+		background: $black;
+		justify-content: flex-start;
+		overflow-x: scroll;
+
+		.tab {
+			display: flex;
+			color: $white;
+			padding: 0 20px;
+			align-items: center;
+			justify-content: center;
+			min-width: 100px;
+		}
+
+		.active, .tab:hover {
+			background: $blue;
+			color: $black;
+		}
+	}
+
+	#blocklyDiv {
+		width: 100%;
+		height: calc(100% - 62px);
+	}
+
+	.blocklyFlyoutBackground {
+		border-radius: 0;
+	}
+
+	.editor {
+		width: 60%;
+		height: 100%;
+		background: none;
+		color: $white;
+		font-family: 'Roboto Mono', monospace;
+		font-size: 14px;
+		border: none;
+		outline: none;
+		resize: none;
+
+		.CodeMirror {
+			width: 100%;
+			height: 100%;
+			padding: 10px;
+			margin: 0;
+		}
+
+
+	}
+
+	.bottomBar {
+		background: $black;
+		width: 100%;
+		height: 0px;
+		display: flex;
+		align-items: center;
+		justify-content: space-around;
+
+		span {
+			margin: 0 10px;
+			padding: 10px 10px;
+			background: $blue;
+			border: none;
+			font-weight: bold;
+			font-size: 1em;
+			color: $black;
+			text-align: center;
+			transition: all 250ms ease-in-out;
+			display: block;
+		}
+
+		.compile {
+			background: $green;
+		}
+
+		span:hover {
+			border-radius: 10px;
+			cursor: pointer;
+			transform: scale(1.1);
+		}
+	}
+}
+
+#alert {
+	display: flex;
+	flex-direction: column;
+	position: absolute;
+	top: 10vh;
+	left: 20vw;
+	padding: 40px;
+	background: #21252b;
+	border-radius: 20px;
+	width: 60vw;
+	z-index: 10;
+	transition: transform 250ms ease-in-out;
+}
+
+#alert-title {
+	font-weight: bold;
+	font-size: 1.5em;
+}
+
+#alert-content {
+	margin-top: 20px;
+}
+
+#alert:hover {
+	cursor: pointer;
+	transform: scale(1.125);
+}
+
