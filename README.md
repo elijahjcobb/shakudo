@@ -5,7 +5,7 @@ This project is currently under development.
 ### electron
 This holds all the code necessary to run the electron process. The `/alloy` directory holds an `AlloyIntegration` class
 which manages a child process that runs the `blockloy-alloy-integration.jar`. This is a build of the
-`shakudo-integration` repo. The `main.ts` file holds information to setup windows, and the link between the render
+[shakudo-integration](https://github.com/elijahjcobb/shakudo-integration) repo. The `main.ts` file holds information to setup windows, and the link between the render
 process and Alloy.
 ### src
 The `src` directory holds the source to display blocks, and an editor to the user. It communicates with the main
