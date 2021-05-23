@@ -11,6 +11,7 @@
  * github.com/elijahjcobb
  */
 @import url("https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100;0,400;0,700;1,100;1,400;1,700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Roboto+Mono&display=swap");
 * {
   margin: 0;
   padding: 0;
@@ -22,6 +23,130 @@ body {
   color: #abb2bf;
   font-family: "Roboto", sans-serif;
   -webkit-user-select: none;
+}
+
+/**
+ * Elijah Cobb
+ * elijah@elijahcobb.com
+ * elijahcobb.com
+ * github.com/elijahjcobb
+ */
+.App {
+  height: 100vh;
+}
+.App .main {
+  height: 100%;
+  width: 100%;
+  display: flex;
+}
+.App .right {
+  width: 40%;
+  height: 100%;
+  border: none;
+  outline: none;
+  stroke-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.App .tabs {
+  display: flex;
+  height: 62px;
+  width: 100%;
+  background: #21252b;
+  justify-content: flex-start;
+  overflow-x: scroll;
+}
+.App .tabs .tab {
+  display: flex;
+  color: #abb2bf;
+  padding: 0 20px;
+  align-items: center;
+  justify-content: center;
+  min-width: 100px;
+}
+.App .tabs .active, .App .tabs .tab:hover {
+  background: #61afef;
+  color: #21252b;
+}
+.App #blocklyDiv {
+  width: 100%;
+  height: calc(100% - 62px);
+}
+.App .blocklyFlyoutBackground {
+  border-radius: 0;
+}
+.App .editor {
+  width: 60%;
+  height: 100%;
+  background: none;
+  color: #abb2bf;
+  font-family: "Roboto Mono", monospace;
+  font-size: 14px;
+  border: none;
+  outline: none;
+  resize: none;
+}
+.App .editor .CodeMirror {
+  width: 100%;
+  height: 100%;
+  padding: 10px;
+  margin: 0;
+}
+.App .bottomBar {
+  background: #21252b;
+  width: 100%;
+  height: 0px;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+}
+.App .bottomBar span {
+  margin: 0 10px;
+  padding: 10px 10px;
+  background: #61afef;
+  border: none;
+  font-weight: bold;
+  font-size: 1em;
+  color: #21252b;
+  text-align: center;
+  transition: all 250ms ease-in-out;
+  display: block;
+}
+.App .bottomBar .compile {
+  background: #98c379;
+}
+.App .bottomBar span:hover {
+  border-radius: 10px;
+  cursor: pointer;
+  transform: scale(1.1);
+}
+
+#alert {
+  display: flex;
+  flex-direction: column;
+  position: absolute;
+  top: 10vh;
+  left: 20vw;
+  padding: 40px;
+  background: #21252b;
+  border-radius: 20px;
+  width: 60vw;
+  z-index: 10;
+  transition: transform 250ms ease-in-out;
+}
+
+#alert-title {
+  font-weight: bold;
+  font-size: 1.5em;
+}
+
+#alert-content {
+  margin-top: 20px;
+}
+
+#alert:hover {
+  cursor: pointer;
+  transform: scale(1.125);
 }
 
 /*# sourceMappingURL=index.css.map */
