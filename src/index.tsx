@@ -5,22 +5,35 @@
  * github.com/elijahjcobb
  */
 
+/**
+ * Imports
+ */
 import CodeMirror from "codemirror";
 import {BlockloyParser} from "./BlockloyParser";
 import Blockly from "blockly";
 
+/**
+ * Importing Styles.
+ */
 import "./index.css";
 import "codemirror/lib/codemirror.css";
 import "codemirror/theme/nord.css";
 
 const ipcRenderer = window.require("electron").ipcRenderer;
 
+/**
+ * Hide the alert.
+ */
 function hideAlert() {
 	const alert = document.getElementById("alert");
 	if (!alert) return;
 	alert.style.display = "none";
 }
 
+/**
+ * Show an alert with a specific message.
+ * @param message
+ */
 function showAlert(message: string) {
 
 	const alertContent = document.getElementById("alert-content");
@@ -33,6 +46,9 @@ function showAlert(message: string) {
 
 }
 
+/**
+ * Initialize the alert.
+ */
 function setupAlert() {
 	const alertElement = document.getElementById("alert");
 	if (!alertElement) return;
@@ -42,6 +58,9 @@ function setupAlert() {
 	};
 }
 
+/**
+ * Set up all the blocks. Change this array for different blocks.
+ */
 function setupBlocks(): void {
 	Blockly.defineBlocksWithJsonArray([{
 		"type": "all",
@@ -294,6 +313,9 @@ function setupBlocks(): void {
 	]);
 }
 
+/**
+ * This is called when the window is loaded.
+ */
 window.onload = () => {
 	const div = document.getElementById("editor");
 	if (!div) return;

@@ -5,8 +5,21 @@
  * github.com/elijahjcobb
  */
 
-export abstract class BlockloyParser {
+/**
+ * This class handles parsing the source to determine which sections of code are non-editable as they are blocks.
+ */
+export class BlockloyParser {
 
+	/**
+	 * Set to private so that a new instance cannot be made. Parse is static.
+	 * @private
+	 */
+	private constructor() {}
+
+	/**
+	 * Parse the source and return an array of start and end objects determining where blocks should be.
+	 * @param value The source code.
+	 */
 	public static parse(value: string): {s: number, e: number}[] {
 
 		const lines: string[] = value.split("\n");

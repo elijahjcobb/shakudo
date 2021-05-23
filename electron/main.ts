@@ -1,20 +1,36 @@
 import {app, BrowserWindow, dialog, ipcMain, Menu, MenuItem, MenuItemConstructorOptions} from "electron";
 import * as path from "path";
 import * as isDev from "electron-is-dev";
-import installExtension, { REACT_DEVELOPER_TOOLS } from "electron-devtools-installer";
 import * as fs from "fs";
 import {AlloyIntegration} from "./alloy/AlloyIntegration";
 
+/**
+ * If move back to react, uncomment below for dev tools.
+ */
+// import installExtension, { REACT_DEVELOPER_TOOLS } from "electron-devtools-installer";
+
+/*
+ * Hold onto the main window and a file string.
+ */
 let win: BrowserWindow | null = null;
 let file: string = "";
 
+/**
+ * Called whenever a window needs to be created.
+ */
 async function createWindow() {
 
+	/**
+	 * A dimensions object to just to change them in one place.
+	 */
 	const dimensions = {
 		width: 1280,
 		height: 720
 	};
 
+	/**
+	 * Create a window with initial and min dimensions and enable node and context.
+	 */
 	win = new BrowserWindow({
 		width: dimensions.width,
 		height: dimensions.height,
@@ -26,7 +42,10 @@ async function createWindow() {
 		}
 	});
 
-	const template: Array<(MenuItemConstructorOptions) | (MenuItem)> = [
+	/**
+	 * All the menu items.
+	 */
+	const menuItems: Array<(MenuItemConstructorOptions) | (MenuItem)> = [
 		{
 			label: "Shakudo",
 			submenu: [
@@ -107,22 +126,34 @@ async function createWindow() {
 					label: "View Github",
 					click: async () => {
 						const { shell } = require("electron");
-						await shell.openExternal("https://github.com/elijahjcobb");
+						await shell.openExternal("https://github.com/elijahjcobb/shakudo");
 					}
 				}
 			]
 		}
 	];
 
-	const menu = Menu.buildFromTemplate(template);
+	/**
+	 * Create menu from menu items and set as main menu.
+	 */
+	const menu = Menu.buildFromTemplate(menuItems);
 	Menu.setApplicationMenu(menu);
 
+	/**
+	 * Create an integration manager. (this is a handler that owns a process to talk with Java stuff).
+	 */
 	let integration: AlloyIntegration | undefined;
 
+	/**
+	 * Handle when the render process asks to save.
+	 */
 	ipcMain.handle("get-save", async (event, arg: string) => {
 		fs.writeFileSync(file, arg);
 	});
 
+	/**
+	 * Handle when the render process asks to run.
+	 */
 	ipcMain.handle("get-run", async (event, arg: string) => {
 		if (!win) return;
 		fs.writeFileSync(file, arg);
@@ -130,12 +161,20 @@ async function createWindow() {
 		integration = new AlloyIntegration(file, win);
 	});
 
+	/**
+	 * Either run the app or build the app.
+	 */
 	if (isDev) await win.loadURL("http://localhost:3000");
 	else await win.loadURL(`file://${__dirname}/../index.html`);
 
+	/**
+	 * Set our reference to the window to null when it is closed.
+	 */
 	win.on("closed", () => win = null);
 
-	// Hot Reloading
+	/**
+	 * Enable hot reloading.
+	 */
 	if (isDev) {
 		require("electron-reload")(__dirname, {
 			electron: path.join(__dirname,
@@ -149,21 +188,32 @@ async function createWindow() {
 		});
 	}
 
-	// DevTools
-	installExtension(REACT_DEVELOPER_TOOLS)
-		.then((name) => console.log(`Added Extension:  ${name}`))
-		.catch((err) => console.log("An error occurred: ", err));
+	/**
+	 * If move back to react, uncomment this to add dev tools.
+	 */
+	// installExtension(REACT_DEVELOPER_TOOLS)
+	// 	.then((name) => console.log(`Added Extension:  ${name}`))
+	// 	.catch((err) => console.log("An error occurred: ", err));
 
 }
 
+/**
+ * Handle when electron is ready to create a window.
+ */
 app.on("ready", createWindow);
 
+/**
+ * Handle when all windows are closed.
+ */
 app.on("window-all-closed", () => {
 	if (process.platform !== "darwin") {
 		app.quit();
 	}
 });
 
+/**
+ * Handle when the app is clicked in toolbar.
+ */
 app.on("activate", () => {
 	if (win === null) {
 		createWindow().catch(console.error);
