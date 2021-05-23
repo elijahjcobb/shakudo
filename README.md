@@ -1,0 +1,2 @@
+# electron-template
+Forked and adapted from [yhirose/react-typescript-electron-sample-with-create-react-app-and-electron-builder](https://github.com/yhirose/react-typescript-electron-sample-with-create-react-app-and-electron-builder).
