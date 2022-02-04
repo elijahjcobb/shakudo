@@ -25,6 +25,17 @@ body {
   -webkit-user-select: none;
 }
 
+
+.block_text {
+  background: #ADD8E6;
+  color: #8B0000;
+}
+
+.block_edit {
+  background: #00FF00;
+  color: #FFA500;
+}
+
 /**
  * Elijah Cobb
  * elijah@elijahcobb.com

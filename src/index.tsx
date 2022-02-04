@@ -9,7 +9,7 @@
  * Imports
  */
 import CodeMirror from "codemirror";
-import {BlockloyParser} from "./BlockloyParser";
+import {BlocklyParse} from "./BlocklyParser";
 import Blockly from "blockly";
 
 /**
@@ -29,7 +29,6 @@ function hideAlert() {
 	if (!alert) return;
 	alert.style.display = "none";
 }
-
 /**
  * Show an alert with a specific message.
  * @param message
@@ -45,7 +44,6 @@ function showAlert(message: string) {
 	alert.style.display = "flex";
 
 }
-
 /**
  * Initialize the alert.
  */
@@ -332,23 +330,77 @@ window.onload = () => {
 		electricChars: true
 	});
 
-	let lastPosition: CodeMirror.Position = {ch: 0, line: 0};
+	var currentParse: BlocklyParse = BlocklyParse.parse("");
+
+/*	let lastPosition: CodeMirror.Position = {ch: 0, line: 0};
 	editor.on("cursorActivity", (editor) => {
 		const position = editor.getCursor();
 		const line: number = position.line;
-		const locations = BlockloyParser.parse(editor.getValue());
-		for (const location of locations) {
-			if (line >= location.s && line <= location.e) {
+
+		// this is a bad solution. TODO: look into 'change', 'beforeChange', 'changes' options
+		// EDIT: THERE IS LITERALLY AN OPTION FOR THIS markText 'atomic', 'readOnly'
+		for(const loc of currentParse.locations) {
+			if (line >= loc.s && line < loc.s + loc.l && !loc.b.editable ) {
 				return editor.setCursor(lastPosition);
 			}
 		}
 		lastPosition = position;
+	});*/
+/*
+	editor.on("beforeChange", (editor, chObj) => {
+		if(["+move", "paste", "*mouse", "+input", "+delete"].includes(chObj.origin)) {
+			console.log(chObj);
+			let affectedBlocks = [];
+			for (const loc of currentParse.locations) {
+				if(chObj.to.line + chObj.text.length - 1 < loc.s) continue;
+				if(loc.s + loc.l < chObj.from.line) break;
+				if(! loc.b.editable) {
+					console.log(loc);
+					chObj.cancel();				// guaranteed overlap one way or another
+					return;
+				}
+			}
+		}
+	});//*/
+		/*for(loc of affectedBlocks) {
+				loc.b.textLines[Math.max(loc.s, chObj.from.line)]
+				loc.b.textLines[Math.min(loc.s + loc.l, chObj.to.line)]
+				loc.b.dirty = true;
+		}*/
+		// this is a bad and inefficient solution
+		/*
 	});
+	editor.on("changes", (editor, changes) => {	// should occur after updates
+		console.log("a");
+		console.log(editor.doc.getValue());
+		currentParse = BlocklyParse.parse(editor.doc.getValue());
+		currentParse.updateLocations();
+		for (const loc of currentParse.locations) {
+			if(loc.b.editable) {
+				editor.markText({ch: 0, line: loc.s}, {ch: 0, line: loc.s + loc.l}, {css: "color: yellow;"});
+			}
+		}
+	});*/
+
 
 	ipcRenderer.on("set", (event: any, message: any) => {
-		editor.setValue(message);
-		for (const location of BlockloyParser.parse(message)) editor.markText({ch: 0, line: location.s - 1}, {ch: 0, line: location.e + 2}, {css: "color: yellow;"});
-	})
+		currentParse = BlocklyParse.parse(message);
+		editor.setValue(currentParse.outputLines.join("\n"));
+		for (const loc of currentParse.locations) {
+			let options = {};
+			if(loc.b.editable) {
+				options["className"] = "block_edit";
+			} else {
+				options["className"] = "block_text";
+				options["readOnly"] = true;
+			}
+			editor.markText({ch: 0, line: loc.s}, {ch: 0, line: loc.s + loc.l}, options);
+		}
+	});
+
+
+
+
 
 	ipcRenderer.on("get-save", () => {
 		ipcRenderer.invoke("get-save", editor.getValue()).catch(console.error);
