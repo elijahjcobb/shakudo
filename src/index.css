@@ -25,13 +25,17 @@ body {
   -webkit-user-select: none;
 }
 
+.shakudo-block {
+  background: #FF0000;
+  color: #FF1111;
+}
 
-.block_text {
+.shakudo-block[data-block-type="text"] {
   background: #ADD8E6;
   color: #8B0000;
 }
 
-.block_edit {
+.shakudo-block[data-block-type="edit"] {
   background: #00FF00;
   color: #FFA500;
 }

@@ -24,8 +24,9 @@ export class ParseBlock {
   public prev: ParseBlock | null = null;
   public next: ParseBlock | null = null;
 
-  public dispLines: string;
   public dirty: boolean = true;
+  public dispLines: string;
+  public fullLines: string;
 
   // note: position of blockly comments within a block are not guaranteed
   //   (but order is); they'll generally be moved to the beginning of the block
@@ -55,7 +56,7 @@ export class ParseBlock {
   // basically just tests for now,
   //     *  but later will be "evaluate the shakudo comments"   * if relevant
   public parse() {
-    for(line of this.blockLines) {
+    for(const line of this.blockLines) {
       //put whatever tests you like here
       let shak_line = BlocklyParse.extractShakudoComment(line);
       console.assert(shak_line !== null, "Invalid parse: corrupted block lines");
@@ -67,7 +68,9 @@ export class ParseBlock {
   // update dispLines if it's dirty
   public updateText() {
     if(this.dirty) {
-      this.dispLines = this.textLines.join("\n");
+      this.dispLines = this.textLines;
+      this.fullLines = [ this.typeLine ].concat(this.blockLines, this.dispLines);
+      if(this.typeLine === "") this.fullLines.shift();
       this.dirty = false;
     }
   }
@@ -82,7 +85,8 @@ export class BlocklyParse {
 
 
   public firstBlock: ParseBlock;
-  public outputLines: string[] = [];
+  public dispLines: string[] = [];
+  public fullLines: string[] = [];
 
   public locations: {s: number, l: number, b: ParseBlock | null }[] = [];
   public dispBlocks: ParseBlock[] = [];
@@ -133,22 +137,29 @@ export class BlocklyParse {
     currBlock.parse();
 
 		let outputParse = new BlocklyParse(firstBlock);
+
+    // creates the initial outputLines and locations;
+    //   thereafter it's better to let CodeMirror handle those details,
+    //   and update the blocks when necessary.
     outputParse.updateTextLines();
-    outputParse.updateLocations();
+    outputParse.updateInitLocations();
+
     return outputParse;
 	};
 
   public updateTextLines() {
     this.outputLines = [];
+    this.fullLines = [];
     for(let curr: ParseBlock | null = this.firstBlock; curr !== null; curr = curr.next) {
       curr.updateText();
+      this.fullLines = this.fullLines.concat(curr.fullLines);
       if(curr.displayable) {
-        this.outputLines = this.outputLines.concat(curr.dispLines);
+        this.dispLines = this.dispLines.concat(curr.dispLines);
       }
     }
   };
 
-  public updateLocations() {
+  public updateInitLocations() {
     this.locations = [ {s: 0, l: 0, b: null} ];
     for(let curr: ParseBlock | null = this.firstBlock; curr !== null; curr = curr.next) {
       curr.updateText();
@@ -185,48 +196,3 @@ export class BlocklyParse {
   };
 
 };
-
-
-
-
-
-
-/*public parse() {
-  if(this.dirty) {
-    this.dispLines = [];
-    for(let i = 0; i < this.rawLines.length; ++i) {
-      let _line = BlocklyParse.extractShakudoComment(this.rawLines[i]);
-      if(_line !== null) {
-        if( ! BlocklyParse.shakudo_comments.includes(_line) ) {
-          console.error(`Unrecognized Shakudo command: ${_line}`);
-        } else {
-          switch(_line) {
-            case "edit":
-            case "text":
-              console.assert(i === 0,
-                "Error: Somehow, a ParseBlock has a block-opening shakudo comment outside its first line.");
-              console.assert(this.type === BlocklyParse.shakudo_comments_blockers[_line],
-                "Error: Somehow, a ParseBlock has a block-opening shakudo comment that mismatches its type.");
-              break;
-
-            case "comment":
-              // do nothing, but don't add it displayable lines
-              break;
-
-            case "debug_hello":
-              console.log("Hello World!");
-              this.dispLines.push("Hello World!!!");
-              break;
-
-            default:
-              console.error("Error: shakudo-comment in shakudo_comments but not implemented");
-          };
-        }
-        continue;
-      }
-      this.dispLines.push(this.rawLines[i]);
-      this.revDispToLine.push(i);
-    }
-    this.dirty = false;
-  }
-}*/

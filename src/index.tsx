@@ -332,6 +332,50 @@ window.onload = () => {
 
 	var currentParse: BlocklyParse = BlocklyParse.parse("");
 
+
+	ipcRenderer.on("set", (event: any, message: any) => {
+		currentParse = BlocklyParse.parse(message);
+		editor.setValue(currentParse.dispLines.join("\n"));
+
+		let i = 0;
+		for (const loc of currentParse.locations) {
+			console.log(loc);
+			let options = { className: "shakudo-block",
+											attributes: {
+												"data-block-type": (loc.b.editable ? "edit" : "text"),
+												"data-block-index": i
+											},
+											readOnly: !loc.b.editable,
+											clearWhenEmpty: false,
+											inclusiveLeft: true,
+											inclusiveRight: true
+										};
+			editor.markText({line: loc.s, ch: 0}, {line: loc.s + loc.l - 1, ch: editor.getLine(loc.s+loc.l-1).length}, options);
+			i++;
+		}
+	});
+
+	ipcRenderer.on("get-save", () => {
+
+		let marks = editor.getAllMarks();
+		let editorValue = editor.getValue().split("\n");
+		for(let i = 0; i < marks.length; ++i) {
+			let ffind = marks[i].find();
+			let ffrom = ffind["from"]["line"]; let fto = ffind["to"]["line"];
+			let iBlk = currentParse.locations[i].b;
+			iBlk.textLines = Array(fto+1-ffrom).fill().map((_,i) => editorValue[ffrom + i]);
+			iBlk.dirty = true;
+		}
+		currentParse.updateTextLines();
+		ipcRenderer.invoke("get-save",  currentParse.fullLines.join("\n")   ).catch(console.error);
+	});
+
+	editor.on("changes", (editor, changes) => {
+
+	});
+
+
+
 /*	let lastPosition: CodeMirror.Position = {ch: 0, line: 0};
 	editor.on("cursorActivity", (editor) => {
 		const position = editor.getCursor();
@@ -383,28 +427,7 @@ window.onload = () => {
 	});*/
 
 
-	ipcRenderer.on("set", (event: any, message: any) => {
-		currentParse = BlocklyParse.parse(message);
-		editor.setValue(currentParse.outputLines.join("\n"));
-		for (const loc of currentParse.locations) {
-			let options = {};
-			if(loc.b.editable) {
-				options["className"] = "block_edit";
-			} else {
-				options["className"] = "block_text";
-				options["readOnly"] = true;
-			}
-			editor.markText({ch: 0, line: loc.s}, {ch: 0, line: loc.s + loc.l}, options);
-		}
-	});
 
-
-
-
-
-	ipcRenderer.on("get-save", () => {
-		ipcRenderer.invoke("get-save", editor.getValue()).catch(console.error);
-	});
 
 	ipcRenderer.on("get-run", () => {
 		ipcRenderer.invoke("get-run", editor.getValue()).catch(console.error);
