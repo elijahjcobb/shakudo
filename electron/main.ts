@@ -90,6 +90,13 @@ async function createWindow() {
 					click: async () => {
 						win?.webContents.send("get-run");
 					}
+				},
+				{
+					label: "Compile Current Tab",
+					accelerator: "CmdOrCtrl+Shift+C",
+					click: async () => {
+						win?.webContents.send("cmd-compile");
+					}
 				}
 			]
 		},
@@ -171,6 +178,7 @@ async function createWindow() {
 	 * Set our reference to the window to null when it is closed.
 	 */
 	win.on("closed", () => win = null);
+	
 
 	/**
 	 * Enable hot reloading.

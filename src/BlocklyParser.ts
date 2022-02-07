@@ -148,7 +148,7 @@ export class BlocklyParse {
 	};
 
   public updateTextLines() {
-    this.outputLines = [];
+    this.dispLines = [];
     this.fullLines = [];
     for(let curr: ParseBlock | null = this.firstBlock; curr !== null; curr = curr.next) {
       curr.updateText();

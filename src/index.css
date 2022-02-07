@@ -63,6 +63,7 @@ body {
   display: flex;
   flex-direction: column;
 }
+
 .App .tabs {
   display: flex;
   height: 62px;
@@ -79,17 +80,27 @@ body {
   justify-content: center;
   min-width: 100px;
 }
-.App .tabs .active, .App .tabs .tab:hover {
+.App .tabs .tab:hover {
+  background: #4d5055;
+  color: #bcbdbf;
+}
+.App .tabs .tab.active {
   background: #61afef;
   color: #21252b;
 }
-.App #blocklyDiv {
+
+.App #blocklyDiv_container {
   width: 100%;
   height: calc(100% - 62px);
+}
+.App #blocklyDiv_container .blocklyDiv {
+  width: 100%;
+  height: 100%;
 }
 .App .blocklyFlyoutBackground {
   border-radius: 0;
 }
+
 .App .editor {
   width: 60%;
   height: 100%;

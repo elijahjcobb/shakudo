@@ -59,8 +59,9 @@ function setupAlert() {
 /**
  * Set up all the blocks. Change this array for different blocks.
  */
-function setupBlocks(): void {
-	Blockly.defineBlocksWithJsonArray([{
+function setupBlocksAndToolbox(): Blockly.Toolbox {
+	var block_defs = [
+		{
 		"type": "all",
 		"message0": "all %1 : %2 | %3",
 		"args0": [
@@ -308,8 +309,31 @@ function setupBlocks(): void {
 			"tooltip": "",
 			"helpUrl": ""
 		}
-	]);
+	];
+	Blockly.defineBlocksWithJsonArray(block_defs);
+
+	var toolbox = {
+		"kind": "flyoutToolbox",
+		"contents": block_defs.map( block => { return {	// weird compile thing
+			"kind": "block",
+			"type": block["type"]
+		}; })
+	};
+	return toolbox;
 }
+
+
+
+
+var currentParse: BlocklyParse;
+var selected_index: number = -1;
+var listBlocklyWorkplaces: { div: HTMLElement, workspace: Blockly.WorkspaceSvg, block_index: number }[] = [];
+
+window.onresize = () => {
+	if(selected_index !== -1) {
+		Blockly.svgResize(listBlocklyWorkplaces[selected_index].workspace);
+	}
+};
 
 /**
  * This is called when the window is loaded.
@@ -329,17 +353,104 @@ window.onload = () => {
 		// readOnly: "nocursor",
 		electricChars: true
 	});
+	const toolbox = setupBlocksAndToolbox();
 
-	var currentParse: BlocklyParse = BlocklyParse.parse("");
+	currentParse = BlocklyParse.parse("");
 
+	var blocklyDiv_container = document.getElementById("blocklyDiv_container");
+	if(!blocklyDiv_container) {throw new Error("Error: blocklyDiv_container not found");}
+	var shak_tabs_div = document.getElementById("shak_tabs");
+	if(!shak_tabs_div) {throw new Error("Error: shak_tabs not found in doc");}
+
+	function createWorkspace(block_index: number, workspace_index: number) {
+		const wrk_div = document.createElement("div");
+		wrk_div.id = "blocklyDiv_" + workspace_index;
+		wrk_div.classList.add("blocklyDiv");
+		wrk_div.hidden = true;
+		blocklyDiv_container.appendChild(wrk_div);
+
+		let workspace = Blockly.inject(wrk_div, {
+			toolbox: toolbox,
+			theme: {
+				componentStyles: {
+					workspaceBackgroundColour: "#282C34",
+					flyoutBackgroundColour: "#21252b",
+					toolboxBackgroundColour: "#21252b"
+				}
+			}
+		});
+		workspace.setResizesEnabled(false);
+
+		listBlocklyWorkplaces.push({
+			div: wrk_div,
+			workspace: workspace,
+			block_index: block_index
+		});
+	}
+
+	var _int_tab_onclick = function(tab_div) {
+		let old_div = shak_tabs_div.children.item(selected_index);
+		let new_index = parseInt(tab_div.dataset.workspace_index);
+		let old_wrk_div = listBlocklyWorkplaces[selected_index].div;
+		let tab_wrk_div = listBlocklyWorkplaces[new_index].div;
+
+		console.assert(document.getElementsByClassName("tab active").length === 1, "Onclick Err: 1");
+		console.assert(old_div === shak_tabs_div.getElementsByClassName("tab active")[0], "Onclick Err: 2");
+		console.assert(parseInt(old_div.dataset.workspace_index) === selected_index, "Onclick Err: 3" );
+		console.assert(selected_index === Array.prototype.indexOf.call(old_div.parentNode.children, old_div), "Onclick Err: 4");
+		console.assert(new_index === Array.prototype.indexOf.call(tab_div.parentNode.children, tab_div), "Onclick Err: 5");
+		console.assert(old_wrk_div.hidden === false, "Onclick Err: 6");
+		if(new_index !== selected_index) {console.assert(tab_wrk_div.hidden === true, "Onclick Err: 7");}
+
+		if(new_index !== selected_index) {
+			old_div.classList.remove("active");
+			tab_div.classList.add("active");
+			old_wrk_div.hidden = true;
+			tab_wrk_div.hidden = false;
+			selected_index = new_index;
+
+			// this is a HORRIBLE hack and I'm not sure why it works or is needed,
+			//   but various permutations of resize, render, etc all failed.
+			// upon window size changes -- I'm not sure which but opening dev tools
+			//  seemed to trigger it semi-consistently -- then switching tabs,
+			//  the other workspace's blocks would all be invisible (though present in
+			//  the html). Shifting window size sometimes fixed it, leading to this:
+			let temp_wrk = listBlocklyWorkplaces[new_index].workspace;
+			tab_wrk_div.style.width = '99%';  tab_wrk_div.style.height = '99%';
+			Blockly.svgResize(temp_wrk);
+			tab_wrk_div.style.width = '100%';  tab_wrk_div.style.height = '100%';
+			Blockly.svgResize(temp_wrk);
+		}
+	};
+	function tab_onclick(tab_div) {
+		return function() {
+			_int_tab_onclick(tab_div);
+		};
+	}
+
+	function createTab(tabs_div: HTMLElement, block_index: number, workspace_index: number, tab_title: string) {
+		const tab_div = document.createElement("div");
+		tab_div.className = "tab";
+		tab_div.dataset.block_index = block_index;
+		tab_div.dataset.workspace_index = workspace_index;	// this should just be n for the nth tab
+		const tab_span = document.createElement("span");
+		tab_span.textContent = tab_title;
+		tab_div.appendChild(tab_span);
+		tabs_div.appendChild(tab_div);
+
+		tab_div.onclick = tab_onclick(tab_div);
+	}
 
 	ipcRenderer.on("set", (event: any, message: any) => {
 		currentParse = BlocklyParse.parse(message);
 		editor.setValue(currentParse.dispLines.join("\n"));
 
-		let i = 0;
+		blocklyDiv_container.innerHTML = "";
+		listBlocklyWorkplaces = [];
+		const tabs_div = document.createElement("div");
+
+		let i = 0; let j = 0;
 		for (const loc of currentParse.locations) {
-			console.log(loc);
 			let options = { className: "shakudo-block",
 											attributes: {
 												"data-block-type": (loc.b.editable ? "edit" : "text"),
@@ -351,8 +462,26 @@ window.onload = () => {
 											inclusiveRight: true
 										};
 			editor.markText({line: loc.s, ch: 0}, {line: loc.s + loc.l - 1, ch: editor.getLine(loc.s+loc.l-1).length}, options);
-			i++;
+
+			if(loc.b.editable) {
+				createTab(tabs_div, i, j, `Block ${j}`);
+				createWorkspace(i, j); // should be the jth entry; other could add an index map or something
+				++j;
+			}
+
+			++i;
 		}
+		shak_tabs_div.replaceWith(tabs_div);
+		tabs_div.className = "tabs"; tabs_div.id = "shak_tabs";
+		shak_tabs_div = tabs_div;
+
+		if(j > 0) {
+			tabs_div.firstChild.classList.add("active");
+			listBlocklyWorkplaces[0].div.hidden = false;
+			selected_index = 0;
+			Blockly.svgResize(listBlocklyWorkplaces[0].workspace);
+		}
+
 	});
 
 	ipcRenderer.on("get-save", () => {
@@ -374,60 +503,19 @@ window.onload = () => {
 
 	});
 
+	ipcRenderer.on("cmd-compile", () => {
+		let rendered_text = ["hello World! ", "yo yo yo", "", "testing 123"];
 
-
-/*	let lastPosition: CodeMirror.Position = {ch: 0, line: 0};
-	editor.on("cursorActivity", (editor) => {
-		const position = editor.getCursor();
-		const line: number = position.line;
-
-		// this is a bad solution. TODO: look into 'change', 'beforeChange', 'changes' options
-		// EDIT: THERE IS LITERALLY AN OPTION FOR THIS markText 'atomic', 'readOnly'
-		for(const loc of currentParse.locations) {
-			if (line >= loc.s && line < loc.s + loc.l && !loc.b.editable ) {
-				return editor.setCursor(lastPosition);
-			}
-		}
-		lastPosition = position;
-	});*/
-/*
-	editor.on("beforeChange", (editor, chObj) => {
-		if(["+move", "paste", "*mouse", "+input", "+delete"].includes(chObj.origin)) {
-			console.log(chObj);
-			let affectedBlocks = [];
-			for (const loc of currentParse.locations) {
-				if(chObj.to.line + chObj.text.length - 1 < loc.s) continue;
-				if(loc.s + loc.l < chObj.from.line) break;
-				if(! loc.b.editable) {
-					console.log(loc);
-					chObj.cancel();				// guaranteed overlap one way or another
-					return;
-				}
-			}
-		}
-	});//*/
-		/*for(loc of affectedBlocks) {
-				loc.b.textLines[Math.max(loc.s, chObj.from.line)]
-				loc.b.textLines[Math.min(loc.s + loc.l, chObj.to.line)]
-				loc.b.dirty = true;
-		}*/
-		// this is a bad and inefficient solution
-		/*
+		const active_tab = document.getElementsByClassName('tab active')[0];
+		const source_index = active_tab.dataset.source_index;
+		const tab_block = currentParse.locations[source_index].b;
+		tab_block.textLines = rendered_text;
+		tab_block.dirty = true; tab_block.updateText();
+		//currentParse.updateTextLines();
+		let marks = editor.getAllMarks();
+		let place = marks[source_index].find();
+		editor.replaceRange(tab_block.dispLines.join("\n"), place.from, place.to);
 	});
-	editor.on("changes", (editor, changes) => {	// should occur after updates
-		console.log("a");
-		console.log(editor.doc.getValue());
-		currentParse = BlocklyParse.parse(editor.doc.getValue());
-		currentParse.updateLocations();
-		for (const loc of currentParse.locations) {
-			if(loc.b.editable) {
-				editor.markText({ch: 0, line: loc.s}, {ch: 0, line: loc.s + loc.l}, {css: "color: yellow;"});
-			}
-		}
-	});*/
-
-
-
 
 	ipcRenderer.on("get-run", () => {
 		ipcRenderer.invoke("get-run", editor.getValue()).catch(console.error);
@@ -444,20 +532,4 @@ window.onload = () => {
 	});
 
 	setupAlert();
-	setupBlocks();
-
-	const toolbox = document.getElementById("toolbox");
-	console.log(toolbox);
-	if (!toolbox) throw new Error("Toolbox undefined.");
-	Blockly.inject("blocklyDiv", {
-		toolbox: toolbox,
-		theme: {
-			componentStyles: {
-				workspaceBackgroundColour: "#282C34",
-				flyoutBackgroundColour: "#21252b",
-				toolboxBackgroundColour: "#21252b"
-			}
-		}
-	});
-
 };
