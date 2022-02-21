@@ -11,6 +11,7 @@
 import CodeMirror from "codemirror";
 import {BlocklyParse} from "./BlocklyParser";
 import Blockly from "blockly";
+import {setupBlocks, setupToolboxContents, setupToolboxWorkspace, Alloy} from "./alloy_generator"
 
 /**
  * Importing Styles.
@@ -18,6 +19,17 @@ import Blockly from "blockly";
 import "./index.css";
 import "codemirror/lib/codemirror.css";
 import "codemirror/theme/nord.css";
+
+// this isn't great practice, but Electron demands some replacement for prompt()
+//    and it's actually recommended in the Blockly code to replace this
+// this exists particularly for the sake of 'create variable' in alloy_generator
+Blockly.prompt = function(msg, defaultValue, callback) {
+	ipcRenderer.invoke("get-open-prompt", msg).catch(console.error).then((r) => {
+		callback(r);
+	});
+};
+
+
 
 const ipcRenderer = window.require("electron").ipcRenderer;
 
@@ -42,7 +54,6 @@ function showAlert(message: string) {
 	const alert = document.getElementById("alert");
 	if (!alert) return;
 	alert.style.display = "flex";
-
 }
 /**
  * Initialize the alert.
@@ -55,273 +66,6 @@ function setupAlert() {
 		hideAlert();
 	};
 }
-
-/**
- * Set up all the blocks. Change this array for different blocks.
- */
-function setupBlocksAndToolbox(): Blockly.Toolbox {
-	var block_defs = [
-		{
-		"type": "all",
-		"message0": "all %1 : %2 | %3",
-		"args0": [
-			{
-				"type": "field_variable",
-				"name": "NAME",
-				"variable": "item"
-			},
-			{
-				"type": "input_value",
-				"name": "condition",
-				"check": "Boolean"
-			},
-			{
-				"type": "input_statement",
-				"name": "statement",
-				"check": "Boolean",
-				"align": "RIGHT"
-			}
-		],
-		"inputsInline": true,
-		"previousStatement": null,
-		"nextStatement": null,
-		"colour": 230,
-		"tooltip": "",
-		"helpUrl": ""
-	},
-		{
-			"type": "some",
-			"message0": "some %1 : %2 | %3",
-			"args0": [
-				{
-					"type": "field_variable",
-					"name": "NAME",
-					"variable": "item"
-				},
-				{
-					"type": "input_value",
-					"name": "condition",
-					"check": "Boolean"
-				},
-				{
-					"type": "input_statement",
-					"name": "statement",
-					"check": "Boolean",
-					"align": "RIGHT"
-				}
-			],
-			"inputsInline": true,
-			"previousStatement": null,
-			"nextStatement": null,
-			"colour": 230,
-			"tooltip": "",
-			"helpUrl": ""
-		},
-		{
-			"type": "no",
-			"message0": "no %1 : %2 | %3",
-			"args0": [
-				{
-					"type": "field_variable",
-					"name": "NAME",
-					"variable": "item"
-				},
-				{
-					"type": "input_value",
-					"name": "condition",
-					"check": "Boolean"
-				},
-				{
-					"type": "input_statement",
-					"name": "statement",
-					"check": "Boolean",
-					"align": "RIGHT"
-				}
-			],
-			"inputsInline": true,
-			"previousStatement": null,
-			"nextStatement": null,
-			"colour": 230,
-			"tooltip": "",
-			"helpUrl": ""
-		},
-		{
-			"type": "one",
-			"message0": "one %1 : %2 | %3",
-			"args0": [
-				{
-					"type": "field_variable",
-					"name": "NAME",
-					"variable": "item"
-				},
-				{
-					"type": "input_value",
-					"name": "condition",
-					"check": "Boolean"
-				},
-				{
-					"type": "input_statement",
-					"name": "statement",
-					"check": "Boolean",
-					"align": "RIGHT"
-				}
-			],
-			"inputsInline": true,
-			"previousStatement": null,
-			"nextStatement": null,
-			"colour": 230,
-			"tooltip": "",
-			"helpUrl": ""
-		},
-		{
-			"type": "lone",
-			"message0": "lone %1 : %2 | %3",
-			"args0": [
-				{
-					"type": "field_variable",
-					"name": "NAME",
-					"variable": "item"
-				},
-				{
-					"type": "input_value",
-					"name": "condition",
-					"check": "Boolean"
-				},
-				{
-					"type": "input_statement",
-					"name": "statement",
-					"check": "Boolean",
-					"align": "RIGHT"
-				}
-			],
-			"inputsInline": true,
-			"previousStatement": null,
-			"nextStatement": null,
-			"colour": 230,
-			"tooltip": "",
-			"helpUrl": ""
-		},
-		{
-			"type": "and",
-			"message0": "and %1 %2 %3",
-			"args0": [
-				{
-					"type": "input_dummy"
-				},
-				{
-					"type": "input_value",
-					"name": "val1",
-					"check": "Boolean",
-					"align": "RIGHT"
-				},
-				{
-					"type": "input_value",
-					"name": "val2",
-					"check": "Boolean"
-				}
-			],
-			"output": null,
-			"colour": 230,
-			"tooltip": "",
-			"helpUrl": ""
-		},
-		{
-			"type": "or",
-			"message0": "or %1 %2 %3",
-			"args0": [
-				{
-					"type": "input_dummy"
-				},
-				{
-					"type": "input_value",
-					"name": "val1",
-					"check": "Boolean",
-					"align": "RIGHT"
-				},
-				{
-					"type": "input_value",
-					"name": "val2",
-					"check": "Boolean"
-				}
-			],
-			"output": null,
-			"colour": 230,
-			"tooltip": "",
-			"helpUrl": ""
-		},
-		{
-			"type": "not",
-			"message0": "not %1",
-			"args0": [
-				{
-					"type": "input_value",
-					"name": "NAME",
-					"check": "Boolean"
-				}
-			],
-			"inputsInline": false,
-			"output": "Boolean",
-			"colour": 230,
-			"tooltip": "",
-			"helpUrl": ""
-		},
-		{
-			"type": "implies",
-			"message0": "implies %1 %2 %3",
-			"args0": [
-				{
-					"type": "input_dummy"
-				},
-				{
-					"type": "input_value",
-					"name": "val1",
-					"check": "Boolean",
-					"align": "RIGHT"
-				},
-				{
-					"type": "input_value",
-					"name": "val2",
-					"check": "Boolean"
-				}
-			],
-			"output": null,
-			"colour": 230,
-			"tooltip": "",
-			"helpUrl": ""
-		},
-		{
-			"type": "iff",
-			"message0": "iff %1 %2",
-			"args0": [
-				{
-					"type": "input_value",
-					"name": "a",
-					"check": "Boolean"
-				},
-				{
-					"type": "input_statement",
-					"name": "b"
-				}
-			],
-			"previousStatement": null,
-			"nextStatement": null,
-			"colour": 230,
-			"tooltip": "",
-			"helpUrl": ""
-		}
-	];
-	Blockly.defineBlocksWithJsonArray(block_defs);
-
-	var toolbox = {
-		"kind": "flyoutToolbox",
-		"contents": block_defs.map( block => { return {	// weird compile thing
-			"kind": "block",
-			"type": block["type"]
-		}; })
-	};
-	return toolbox;
-}
-
 
 
 
@@ -353,7 +97,7 @@ window.onload = () => {
 		// readOnly: "nocursor",
 		electricChars: true
 	});
-	const toolbox = setupBlocksAndToolbox();
+	setupBlocks();
 
 	currentParse = BlocklyParse.parse("");
 
@@ -369,6 +113,8 @@ window.onload = () => {
 		wrk_div.hidden = true;
 		blocklyDiv_container.appendChild(wrk_div);
 
+		const currBlock = currentParse.locations[block_index].b;
+		const toolbox = setupToolboxContents(currBlock);
 		let workspace = Blockly.inject(wrk_div, {
 			toolbox: toolbox,
 			theme: {
@@ -380,6 +126,8 @@ window.onload = () => {
 			}
 		});
 		workspace.setResizesEnabled(false);
+
+		setupToolboxWorkspace(currBlock, workspace);
 
 		listBlocklyWorkplaces.push({
 			div: wrk_div,
@@ -504,11 +252,14 @@ window.onload = () => {
 	});
 
 	ipcRenderer.on("cmd-compile", () => {
-		let rendered_text = ["hello World! ", "yo yo yo", "", "testing 123"];
-
-		const active_tab = document.getElementsByClassName('tab active')[0];
-		const source_index = active_tab.dataset.source_index;
+		const tab_div = shak_tabs_div.children.item(selected_index);
+		const tab_wrk = listBlocklyWorkplaces[selected_index].workspace;
+		const source_index = parseInt(tab_div.dataset.block_index);
 		const tab_block = currentParse.locations[source_index].b;
+
+		let code = Alloy.workspaceToCode(tab_wrk);
+		let rendered_text = code.split("\n");
+
 		tab_block.textLines = rendered_text;
 		tab_block.dirty = true; tab_block.updateText();
 		//currentParse.updateTextLines();

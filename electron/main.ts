@@ -9,6 +9,8 @@ import {AlloyIntegration} from "./alloy/AlloyIntegration";
  */
 // import installExtension, { REACT_DEVELOPER_TOOLS } from "electron-devtools-installer";
 
+var prompt = require('electron-prompt');
+
 /*
  * Hold onto the main window and a file string.
  */
@@ -97,7 +99,7 @@ async function createWindow() {
 					click: async () => {
 						win?.webContents.send("cmd-compile");
 					}
-				}
+				},
 			]
 		},
 		// { role: "editMenu" }
@@ -168,6 +170,21 @@ async function createWindow() {
 		integration = new AlloyIntegration(file, win);
 	});
 
+
+	ipcMain.handle("get-open-prompt", async (event, arg: any) => {
+		let res = await prompt({
+			title: arg.title || "",
+			label: arg.label || "",
+			value: arg.value || "",
+			inputAttrs: arg.inputAttrs || {},
+			type: 'input'
+		}).catch(console.error);
+		let result = await res;
+		return result;
+	});
+
+
+
 	/**
 	 * Either run the app or build the app.
 	 */
@@ -178,7 +195,6 @@ async function createWindow() {
 	 * Set our reference to the window to null when it is closed.
 	 */
 	win.on("closed", () => win = null);
-	
 
 	/**
 	 * Enable hot reloading.

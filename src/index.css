@@ -26,18 +26,18 @@ body {
 }
 
 .shakudo-block {
-  background: #FF0000;
-  color: #FF1111;
+  background: #282c34;
+  color: #ccd0d8;
 }
 
 .shakudo-block[data-block-type="text"] {
-  background: #ADD8E6;
-  color: #8B0000;
+  background: #282C34;
+  color: #ccd0d8;
 }
 
 .shakudo-block[data-block-type="edit"] {
-  background: #00FF00;
-  color: #FFA500;
+  background: #ffffe0;
+  color: #A9A9A9;
 }
 
 /**

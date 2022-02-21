@@ -34,6 +34,8 @@ export class ParseBlock {
   public blockLines: string[] = [];
   public textLines: string[] = [];
 
+  public fixed_set_names: string[] = [];
+  public fixed_predicates: string[] = [];
 
   public constructor(input) {
     if(typeof input === 'number') {
@@ -60,8 +62,27 @@ export class ParseBlock {
       //put whatever tests you like here
       let shak_line = BlocklyParse.extractShakudoComment(line);
       console.assert(shak_line !== null, "Invalid parse: corrupted block lines");
-      console.assert(shak_line in BlocklyParse.shakudo_comments, "Invalid parse: not a shakudo comment");
+      console.assert(BlocklyParse.shakudo_comments.indexOf(shak_line) > -1, "Invalid parse: not a shakudo comment");
       console.assert(! (shak_line in BlocklyParse.shakudo_comments_blockers), "Invalid parse: block starter in block lines");
+    }
+
+    for(const line of this.blockLines) {
+      let shak_line = BlocklyParse.extractShakudoComment(line);
+      if(shak_line === "define_var") {
+        let var_name = line.split("define_var ")[1].split(" ")[0];
+        this.fixed_set_names.push(var_name);
+      } else if(shak_line === "define_pred") {
+        let splitter = line.split("define_pred ")[1].split(" ");
+        this.fixed_predicates[ splitter[0] ] = splitter.slice(1);
+      }
+    }
+
+    // TODO: Actually take this out, there could be eg inheritance and stuff making this ugly
+    // eslint-disable-next-line 
+    for(const [pred, types] of this.fixed_predicates.entries()) {
+      for(const typo of types) {
+        console.assert(this.fixed_set_names.contains(typo), "Predicate requires types that aren't declared in this block");
+      }
     }
   }
 
@@ -189,7 +210,7 @@ export class BlocklyParse {
     return null;
   };
 
-  static shakudo_comments = [ "edit", "text", "comment", "debug_hello" ];
+  static shakudo_comments = [ "edit", "text", "comment", "define_var", "define_pred" ];
   static shakudo_comments_blockers = {  // as in "starts a block"
     "edit": OParseBlockType.EDIT,
     "text": OParseBlockType.TEXT
