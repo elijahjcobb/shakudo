@@ -19,7 +19,6 @@
 }
 
 body {
-  background: #282C34;
   color: #abb2bf;
   font-family: "Roboto", sans-serif;
   -webkit-user-select: none;
@@ -100,6 +99,12 @@ body {
 .App .blocklyFlyoutBackground {
   border-radius: 0;
 }
+
+.App .toolbox_style > .blocklyFlyoutLabelText {
+  fill: white;
+  font-style: bold;
+}
+
 
 .App .editor {
   width: 60%;

@@ -162,10 +162,11 @@ async function createWindow() {
 
 	/**
 	 * Handle when the render process asks to run.
+	 * Does NOT call save() automatically anymore.
 	 */
 	ipcMain.handle("get-run", async (event, arg: string) => {
 		if (!win) return;
-		fs.writeFileSync(file, arg);
+		//fs.writeFileSync(file, arg);
 		if (integration) integration.stop();
 		integration = new AlloyIntegration(file, win);
 	});

@@ -20,6 +20,7 @@ export class ParseBlock {
   public type: ParseBlockType;
   public displayable: boolean;
   public editable: boolean;
+  public title: string = "";
 
   public prev: ParseBlock | null = null;
   public next: ParseBlock | null = null;
@@ -48,6 +49,10 @@ export class ParseBlock {
       if( !(extractType in BlocklyParse.shakudo_comments_blockers)) { let msg = "block constructor received a typeLine that doesn't give a block type"; console.error(msg); throw msg; }
       this.typeLine = input;
       this.type = BlocklyParse.shakudo_comments_blockers[extractType];
+
+      let tit_res = input.split(extractType).map(e => e.trim()).filter(e => e);
+      if(tit_res.length > 1)  this.title = tit_res[1];
+
     } else { let msg = "Block constructor received a wrong-typed parameter"; console.error(msg); throw msg; }
 
     this.displayable = [ OParseBlockType.TEXT, OParseBlockType.EDIT ].includes(this.type);
@@ -68,8 +73,8 @@ export class ParseBlock {
 
     for(const line of this.blockLines) {
       let shak_line = BlocklyParse.extractShakudoComment(line);
-      if(shak_line === "define_var") {
-        let var_name = line.split("define_var ")[1].split(" ")[0];
+      if(shak_line === "define_sig") {
+        let var_name = line.split("define_sig ")[1].split(" ")[0];
         this.fixed_set_names.push(var_name);
       } else if(shak_line === "define_pred") {
         let splitter = line.split("define_pred ")[1].split(" ");
@@ -78,7 +83,7 @@ export class ParseBlock {
     }
 
     // TODO: Actually take this out, there could be eg inheritance and stuff making this ugly
-    // eslint-disable-next-line 
+    // eslint-disable-next-line
     for(const [pred, types] of this.fixed_predicates.entries()) {
       for(const typo of types) {
         console.assert(this.fixed_set_names.contains(typo), "Predicate requires types that aren't declared in this block");
@@ -210,7 +215,7 @@ export class BlocklyParse {
     return null;
   };
 
-  static shakudo_comments = [ "edit", "text", "comment", "define_var", "define_pred" ];
+  static shakudo_comments = [ "edit", "text", "comment", "define_sig", "define_pred" ];
   static shakudo_comments_blockers = {  // as in "starts a block"
     "edit": OParseBlockType.EDIT,
     "text": OParseBlockType.TEXT

@@ -212,7 +212,7 @@ window.onload = () => {
 			editor.markText({line: loc.s, ch: 0}, {line: loc.s + loc.l - 1, ch: editor.getLine(loc.s+loc.l-1).length}, options);
 
 			if(loc.b.editable) {
-				createTab(tabs_div, i, j, `Block ${j}`);
+				createTab(tabs_div, i, j, (loc.b.title ? loc.b.title : `Block ${j}`)  );
 				createWorkspace(i, j); // should be the jth entry; other could add an index map or something
 				++j;
 			}
@@ -232,8 +232,7 @@ window.onload = () => {
 
 	});
 
-	ipcRenderer.on("get-save", () => {
-
+	var get_save_callback = () => {
 		let marks = editor.getAllMarks();
 		let editorValue = editor.getValue().split("\n");
 		for(let i = 0; i < marks.length; ++i) {
@@ -245,7 +244,8 @@ window.onload = () => {
 		}
 		currentParse.updateTextLines();
 		ipcRenderer.invoke("get-save",  currentParse.fullLines.join("\n")   ).catch(console.error);
-	});
+	};
+	ipcRenderer.on("get-save", get_save_callback);
 
 	editor.on("changes", (editor, changes) => {
 
@@ -269,6 +269,7 @@ window.onload = () => {
 	});
 
 	ipcRenderer.on("get-run", () => {
+		get_save_callback();
 		ipcRenderer.invoke("get-run", editor.getValue()).catch(console.error);
 	});
 
