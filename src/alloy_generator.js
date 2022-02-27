@@ -2,30 +2,43 @@ import Blockly from "blockly"
 import {ParseBlock} from "./BlocklyParser"
 
 
-// defined at the bottom of this file
+// block definitions -- defined at the bottom of this file
 var block_defs;
-var fixed_var_def_func, create_var_def_func, quant_def_func, un_op_def_func, bin_op_def_func, compare_op_def_func;
+var gen_pred_thing;
+var fixed_var_def_func, create_var_def_func, quant_def_func, un_op_def_func, bin_op_def_func, compare_op_def_func, set_bin_op_def_func;
 
 // function implementations in setupBlocks
 var quant_list  = ["all", "some", "one", "lone", "no"];
 var un_op_list  = ["not"];
 var bin_op_list = ["and", "or", "implies", "iff"];
-var compare_op_list = ["=", "<", ">", "<=", ">=", "!="];  // todo: human-friendly words
+var compare_op_list = ["=", "<", ">", "<=", ">=", "!="];  // todo: human-friendly words (dict?)
+var set_bin_op_list = [ "-", "+", "&" ]
 
 
+/*
+Extremely important: at the moment, I'm distinguishing between variables
+  (eg a locally-bound var in a quantifier) and sets (eg a predefined signature).
+I think Alloy doesn't really make a distinction in type, but I think for our
+  purposes it's good to separate them for student typechecking
 
+Other notes: as of this comment, predef_var isn't actually used (intended to be
+  for eg if an instructor wants to insert code inside a quantifier... although
+  ineditable predefined blocks might be a better solution there).
+*/
 
-// type system:
-// local variables (eg the 'k1' in 'all k1: Kitteh | ...'): local_scoped_set
-  // also predefined_set, if an instructor wants students to look at a specific
-  //    section of code for instance (as of this comment, not implemented)
-// statement (eg the 'k1.inLoveWith(k2)' in 'all k1: Kitteh | k1.inLoveWith(k2))')
-  // this is a return type of blocks: statement_expr
+// TYPE: 'var'   -- the two subcategories below are for the getter blocks
+var var_types = [ "predef_var", "bound_var" ];
+var fixed_var_types = [ "predef_var" ];       // subset of var_types
+var creatable_var_types = [ "bound_var" ];   // subset of var_types
 
+// TYPE: 'set'  -- the type of sigs, as well as sig ops (eg A intersect B)
+var set_types = [ "predef_set" ]
+var fixed_set_types = [ "predef_set" ]
+  // can't currently create set vars
+
+// TYPE: actually none yet, vertical connections are boolean-valued and
+//   there's nothing else at the moment so no need for type checking
 var expr_types = [ "statement_expr" ];
-var var_types = [ "predefined_set", "local_scoped_set" ];
-var fixed_var_types = [ "predefined_set" ];       // subset of var_types
-var creatable_var_types = [ "local_scoped_set" ]; // subset of var_types
 
 // ---------------------------------------------------------
 
@@ -89,37 +102,29 @@ export function setupBlocks(): Blockly.Toolbox {
     Alloy['get_' + var_type] = get_func;
   }
 
-  // add the block type for fixed signatures (currently)
+  // add the block type for fixed variables (not that any exist yet)
   for(let var_type of fixed_var_types) {
-    upd_block_defs.push( fixed_var_def_func(var_type) );
+    upd_block_defs.push( fixed_var_def_func(var_type, "var") );
     Alloy['fixed_get_' + var_type] = get_func;
   }
 
-    // add the block for fixed predicates
+  // add the block type for fixed sets (eg sigs)
+  for(let var_type of fixed_set_types) {
+    upd_block_defs.push( fixed_var_def_func(var_type, "set") );
+    Alloy['fixed_get_' + var_type] = get_func;
+  }
+
+  // add the block for fixed predicates
       // there's one type for each 'size' (# args); there may be a a better way
       // update: there is a better way, see the generators in blockly package
       //  changing to that format is low priority since this works fine for now
-  function gen_pred_thing(n) {
-    let type = `fixed_pred_${n}`;
-    let message = [...Array(n+1).keys()].map( i => `%${i+1}`).join(" ");
+  var MAX_PREDICATE_SIZE = 10;  // again, there should be a better way than this...
+  for(let n = 0; n <= MAX_PREDICATE_SIZE; ++n) {
+    let block_type = `fixed_pred_${n}`;
+    let block_def = gen_pred_thing(n, block_type);
+    upd_block_defs.push( block_def );
 
-    let thing = {
-      "type": type,
-      "message0": message,
-      "args0": [{
-        "type": "field_label_serializable",
-        "name": "VAR",
-        "text": ""
-      }],
-      "colour": 280,
-      "previousStatement": null,
-      "nextStatement": null
-    };
-    for(let i = 0; i < n; ++i) {
-      thing["args0"].push({ "type": "input_value", "name": "param_" + i });
-    }
-
-    Alloy[type] = function(block) {
+    Alloy[block_type] = function(block) {
       let code = Alloy.nameDB_.getName(block.getFieldValue('VAR'), 'VARIABLE') + "[";
 
       let inputList = [];
@@ -130,13 +135,7 @@ export function setupBlocks(): Blockly.Toolbox {
       code += inputList.join(", ");
       code += "]";
       return code;
-    };
-
-    return thing;
-  }
-  var MAX_PREDICATE_SIZE = 10;  // again, there should be a better way than this...
-  for(let i = 0; i <= MAX_PREDICATE_SIZE; ++i) {
-    upd_block_defs.push( gen_pred_thing(i) );
+    }
   }
 
 
@@ -171,7 +170,7 @@ export function setupBlocks(): Blockly.Toolbox {
     Alloy[inp_str] = function(block) {
       var left = Alloy.statementToCode(block, 'left_statement');
       var right = Alloy.statementToCode(block, 'right_statement');
-      var code = '(' + left + ' ' + inp_str + ' ' + right + ')';
+      var code = left + ' ' + inp_str + ' ' + right;
       return code;
     };
     upd_block_defs.push(bin_op_def_func(inp_str));
@@ -188,6 +187,17 @@ export function setupBlocks(): Blockly.Toolbox {
     upd_block_defs.push(compare_op_def_func(inp_str));
   }
   compare_op_list.forEach( compare_op_func ); // currently the same function
+
+  function set_bin_op_func(inp_str) {
+    Alloy[inp_str] = function(block) {
+      var left = Alloy.valueToCode(block, 'left_value', 0) || " ";
+      var right = Alloy.valueToCode(block, 'right_value', 0) || " ";
+      var code = left + ' ' + inp_str + ' ' + right;
+      return [code, 0];
+    };
+    upd_block_defs.push(set_bin_op_def_func(inp_str));
+  }
+  set_bin_op_list.forEach( set_bin_op_func ); // currently the same function
 
 	Blockly.defineBlocksWithJsonArray(upd_block_defs);
 };
@@ -208,7 +218,7 @@ export function setupToolboxContents(block: ParseBlock) {
   toolbox["contents"] = [ {"kind": "label", "text": "Predefined Signatures:", "web-class": "toolbox_style", } ];
   toolbox["contents"].push(...(block.fixed_set_names.map( vname => { return {
     "kind": "block",
-    "type": "fixed_get_predefined_set",
+    "type": "fixed_get_predef_set",
     "fields": {
       "VAR": vname,
     },
@@ -256,10 +266,13 @@ export function setupToolboxContents(block: ParseBlock) {
   toolbox["contents"].push(...[ {"kind": "label", "text": "Quantified Expressions:", "web-class": "toolbox_style", } ]);
   generic_concat(quant_list);
 
-  toolbox["contents"].push(...[ {"kind": "label", "text": "Operators", "web-class": "toolbox_style", } ]);
+  toolbox["contents"].push(...[ {"kind": "label", "text": "Boolean-Valued Operators", "web-class": "toolbox_style", } ]);
   generic_concat(bin_op_list);
   generic_concat(un_op_list);
   generic_concat(compare_op_list);
+
+  toolbox["contents"].push(...[ {"kind": "label", "text": "Set-Valued Operators", "web-class": "toolbox_style", } ]);
+  generic_concat(set_bin_op_list);
 
   // misc... none as of this comment
   generic_concat(block_defs);
@@ -284,6 +297,96 @@ export function setupToolboxWorkspace(block: ParseBlock, workspace: Blockly.Work
 
 
 // ---------------------------------------------------------
+/*  Renderer -- type checking shapes */
+
+var CustomRenderer = function(name) {
+  CustomRenderer.superClass_.constructor.call(this, name);
+};
+Blockly.utils.object.inherits(CustomRenderer,
+    Blockly.blockRendering.Renderer);
+
+var CustomConstantsProvider = function() {
+  CustomConstantsProvider.superClass_.constructor.call(this);
+  //this.CORNER_RADIUS = 10;   //Rounded corner radius
+  //this.TAB_HEIGHT = 14;  // The height of the puzzle tab used for input and output connections.
+  // Add calls to create shape objects for the new connection shapes.
+  this.SET_PUZZLE_TAB = this.makeSetInputConn();
+};
+Blockly.utils.object.inherits(CustomConstantsProvider,
+    Blockly.blockRendering.ConstantProvider);
+
+CustomConstantsProvider.prototype.makeSetInputConn = function() {
+  var width = this.TAB_WIDTH * 1.1;
+  var height = this.TAB_HEIGHT;
+  function makeMainPathShape(up) {
+    return Blockly.utils.svgPaths.line([
+      Blockly.utils.svgPaths.point(-width, 0),
+      Blockly.utils.svgPaths.point(width/2, -0.5 * up * height),
+      Blockly.utils.svgPaths.point(-width/2, -0.5 * up * height),
+      Blockly.utils.svgPaths.point(width, 0)
+    ]);
+  }
+  var pathUp = makeMainPathShape(1);
+  var pathDown = makeMainPathShape(-1);
+  return {
+    width: width,
+    height: height,
+    pathDown: pathDown,
+    pathUp: pathUp
+  };
+};
+/**  @override */
+CustomConstantsProvider.prototype.shapeFor = function(
+    connection) {
+  var checks = connection.getCheck();
+  switch (connection.type) {
+    case Blockly.INPUT_VALUE:
+    case Blockly.OUTPUT_VALUE:
+      if(checks && checks.includes("set") ) {
+        return this.SET_PUZZLE_TAB;
+      }
+      return this.PUZZLE_TAB;
+    case Blockly.PREVIOUS_STATEMENT:
+    case Blockly.NEXT_STATEMENT:
+      return this.NOTCH;
+    default:
+      throw Error('Unknown connection type');
+  }
+};
+
+CustomRenderer.prototype.makeConstants_ = function() {
+  return new CustomConstantsProvider();
+};
+
+Blockly.blockRendering.register('custom_renderer', CustomRenderer);
+
+// ---------------------------------------------------------
+/*   Block definitions */
+
+gen_pred_thing = (n, block_type) => {
+  let message = [...Array(n+1).keys()].map( i => `%${i+1}`).join(" ");
+
+  let thing = {
+    "type": block_type,
+    "message0": message,
+    "args0": [{
+      "type": "field_label_serializable",
+      "name": "VAR",
+      "text": ""
+    }],
+    "colour": 280,
+    "previousStatement": null,
+    //"nextStatement": null
+  };
+  for(let i = 0; i < n; ++i) {
+    thing["args0"].push({
+      "type": "input_value",
+      "name": "param_" + i,
+      "check": ["var"]
+    });
+  }
+  return thing;
+};
 
 
 create_var_def_func = (var_type) => { return {
@@ -298,11 +401,11 @@ create_var_def_func = (var_type) => { return {
       "defaultType": var_type
     }
   ],
-  "output": var_type,    // Null means the return value can be of any type
+  "output": "var",    // Null means the return value can be of any type
   "colour": "#a83275",
 }; };
 
-fixed_var_def_func = (var_type) => {
+fixed_var_def_func = (var_type, type) => {
   return {
     "type": "fixed_get_" + var_type,
     "message0": "%1",
@@ -311,7 +414,7 @@ fixed_var_def_func = (var_type) => {
       "name": "VAR",
       "text": ""
     }],
-    "output": var_type,
+    "output": type,
     "colour": "#bd37a4",
   }; };
 
@@ -324,13 +427,13 @@ quant_def_func = (text) => { return {
         "type": "field_variable",
         "name": "NAME",
         "variable": "item",
-        "variableTypes": ["local_scoped_set"],
-        "defaultType": "local_scoped_set"
+        "variableTypes": ["bound_var"],
+        "defaultType": "bound_var"
       },
       {
         "type": "input_value",
         "name": "condition",
-      //  "check": "Boolean"
+        "check": [ "set" ]
       },
       {
         "type": "input_statement",
@@ -341,7 +444,7 @@ quant_def_func = (text) => { return {
     ],
     "inputsInline": true,
     "previousStatement": null,
-    "nextStatement": null,
+    //"nextStatement": null,
     "colour": "#4033a1",
     "tooltip": "",
     "helpUrl": ""
@@ -360,7 +463,7 @@ un_op_def_func = (text) => { return {
   ],
   "inputsInline": false,
   "previousStatement": null,
-  "nextStatement": null,
+  //"nextStatement": null,
   "colour": 230,
   "tooltip": "",
   "helpUrl": ""
@@ -385,7 +488,7 @@ bin_op_def_func = (text) => { return {
   ],
   "inputsInline": false,
   "previousStatement": null,
-  "nextStatement": null,
+  //"nextStatement": null,
   "colour": 230,
   "tooltip": "",
   "helpUrl": ""
@@ -397,276 +500,48 @@ compare_op_def_func = (text) => { return {
   "args0": [
     {
       "type": "input_value",
-      "name": "left_value"
+      "name": "left_value",
+      "check": "var"
     },
     {
       "type": "input_value",
-      "name": "right_value"
+      "name": "right_value",
+      "check": "var"
     }
   ],
-  "inputsInline": false,
+  "inputsInline": true,
   "previousStatement": null,
-  "nextStatement": null,
+  //"nextStatement": null,
   "colour": 230,
   "tooltip": "",
   "helpUrl": ""
 }; };
 
 
-block_defs = [
-
-];
-
-
-/*
-block_defs = [
-  {
-  "type": "all",
-  "message0": "all %1 : %2 | %3",
+set_bin_op_def_func = (text) => { return {
+  "type": text,
+  "message0": `%1 ${text} %2`,
   "args0": [
     {
-      "type": "field_variable",
-      "name": "NAME",
-      "variable": "item"
+      "type": "input_value",
+      "name": "left_value",
+      "check": "set"
     },
     {
       "type": "input_value",
-      "name": "condition",
-      "check": "Boolean"
-    },
-    {
-      "type": "input_statement",
-      "name": "statement",
-      "check": "Boolean",
-      "align": "RIGHT"
+      "name": "right_value",
+      "check": "set"
     }
   ],
+  "output": "set",
   "inputsInline": true,
-  "previousStatement": null,
-  "nextStatement": null,
-  "colour": 230,
+  "colour": 150,
   "tooltip": "",
   "helpUrl": ""
-},
-  {
-    "type": "some",
-    "message0": "some %1 : %2 | %3",
-    "args0": [
-      {
-        "type": "field_variable",
-        "name": "NAME",
-        "variable": "item"
-      },
-      {
-        "type": "input_value",
-        "name": "condition",
-        "check": "Boolean"
-      },
-      {
-        "type": "input_statement",
-        "name": "statement",
-        "check": "Boolean",
-        "align": "RIGHT"
-      }
-    ],
-    "inputsInline": true,
-    "previousStatement": null,
-    "nextStatement": null,
-    "colour": 230,
-    "tooltip": "",
-    "helpUrl": ""
-  },
-  {
-    "type": "no",
-    "message0": "no %1 : %2 | %3",
-    "args0": [
-      {
-        "type": "field_variable",
-        "name": "NAME",
-        "variable": "item"
-      },
-      {
-        "type": "input_value",
-        "name": "condition",
-        "check": "Boolean"
-      },
-      {
-        "type": "input_statement",
-        "name": "statement",
-        "check": "Boolean",
-        "align": "RIGHT"
-      }
-    ],
-    "inputsInline": true,
-    "previousStatement": null,
-    "nextStatement": null,
-    "colour": 230,
-    "tooltip": "",
-    "helpUrl": ""
-  },
-  {
-    "type": "one",
-    "message0": "one %1 : %2 | %3",
-    "args0": [
-      {
-        "type": "field_variable",
-        "name": "NAME",
-        "variable": "item"
-      },
-      {
-        "type": "input_value",
-        "name": "condition",
-        "check": "Boolean"
-      },
-      {
-        "type": "input_statement",
-        "name": "statement",
-        "check": "Boolean",
-        "align": "RIGHT"
-      }
-    ],
-    "inputsInline": true,
-    "previousStatement": null,
-    "nextStatement": null,
-    "colour": 230,
-    "tooltip": "",
-    "helpUrl": ""
-  },
-  {
-    "type": "lone",
-    "message0": "lone %1 : %2 | %3",
-    "args0": [
-      {
-        "type": "field_variable",
-        "name": "NAME",
-        "variable": "item"
-      },
-      {
-        "type": "input_value",
-        "name": "condition",
-        "check": "Boolean"
-      },
-      {
-        "type": "input_statement",
-        "name": "statement",
-        "check": "Boolean",
-        "align": "RIGHT"
-      }
-    ],
-    "inputsInline": true,
-    "previousStatement": null,
-    "nextStatement": null,
-    "colour": 230,
-    "tooltip": "",
-    "helpUrl": ""
-  },
-  {
-    "type": "and",
-    "message0": "and %1 %2 %3",
-    "args0": [
-      {
-        "type": "input_dummy"
-      },
-      {
-        "type": "input_value",
-        "name": "val1",
-        "check": "Boolean",
-        "align": "RIGHT"
-      },
-      {
-        "type": "input_value",
-        "name": "val2",
-        "check": "Boolean"
-      }
-    ],
-    "output": null,
-    "colour": 230,
-    "tooltip": "",
-    "helpUrl": ""
-  },
-  {
-    "type": "or",
-    "message0": "or %1 %2 %3",
-    "args0": [
-      {
-        "type": "input_dummy"
-      },
-      {
-        "type": "input_value",
-        "name": "val1",
-        "check": "Boolean",
-        "align": "RIGHT"
-      },
-      {
-        "type": "input_value",
-        "name": "val2",
-        "check": "Boolean"
-      }
-    ],
-    "output": null,
-    "colour": 230,
-    "tooltip": "",
-    "helpUrl": ""
-  },
-  {
-    "type": "not",
-    "message0": "not %1",
-    "args0": [
-      {
-        "type": "input_value",
-        "name": "NAME",
-        "check": "Boolean"
-      }
-    ],
-    "inputsInline": false,
-    "output": "Boolean",
-    "colour": 230,
-    "tooltip": "",
-    "helpUrl": ""
-  },
-  {
-    "type": "implies",
-    "message0": "implies %1 %2 %3",
-    "args0": [
-      {
-        "type": "input_dummy"
-      },
-      {
-        "type": "input_value",
-        "name": "val1",
-        "check": "Boolean",
-        "align": "RIGHT"
-      },
-      {
-        "type": "input_value",
-        "name": "val2",
-        "check": "Boolean"
-      }
-    ],
-    "output": null,
-    "colour": 230,
-    "tooltip": "",
-    "helpUrl": ""
-  },
-  {
-    "type": "iff",
-    "message0": "iff %1 %2",
-    "args0": [
-      {
-        "type": "input_value",
-        "name": "a",
-        "check": "Boolean"
-      },
-      {
-        "type": "input_statement",
-        "name": "b"
-      }
-    ],
-    "previousStatement": null,
-    "nextStatement": null,
-    "colour": 230,
-    "tooltip": "",
-    "helpUrl": ""
-  }
+};};
+
+
+// misc
+block_defs = [
+
 ];
-*/

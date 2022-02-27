@@ -117,6 +117,7 @@ window.onload = () => {
 		const toolbox = setupToolboxContents(currBlock);
 		let workspace = Blockly.inject(wrk_div, {
 			toolbox: toolbox,
+			renderer: "custom_renderer",
 			theme: {
 				componentStyles: {
 					workspaceBackgroundColour: "#282C34",
@@ -257,7 +258,15 @@ window.onload = () => {
 		const source_index = parseInt(tab_div.dataset.block_index);
 		const tab_block = currentParse.locations[source_index].b;
 
-		let code = Alloy.workspaceToCode(tab_wrk);
+		let code = "";
+		if(tab_wrk.getTopBlocks().length > 1 && !tab_block.allow_multiple) {
+			// TODO TODO: popup user-friendly error messages, maybe an 'aborted' animation or red window flash
+			console.error("Too many top-level blocks");
+			Alloy.init(tab_wrk);
+			code = Alloy.blockToCode(tab_wrk.getTopBlocks()[0]);
+		} else {
+			code = Alloy.workspaceToCode(tab_wrk);
+		}
 		let rendered_text = code.split("\n");
 
 		tab_block.textLines = rendered_text;

@@ -21,6 +21,7 @@ export class ParseBlock {
   public displayable: boolean;
   public editable: boolean;
   public title: string = "";
+  public allow_multiple: boolean = false;   // for compiled nodes
 
   public prev: ParseBlock | null = null;
   public next: ParseBlock | null = null;
@@ -79,6 +80,8 @@ export class ParseBlock {
       } else if(shak_line === "define_pred") {
         let splitter = line.split("define_pred ")[1].split(" ");
         this.fixed_predicates[ splitter[0] ] = splitter.slice(1);
+      } else if(shak_line === "allow_multiple") {
+        this.allow_multiple = true;
       }
     }
 
@@ -215,7 +218,7 @@ export class BlocklyParse {
     return null;
   };
 
-  static shakudo_comments = [ "edit", "text", "comment", "define_sig", "define_pred" ];
+  static shakudo_comments = [ "edit", "text", "comment", "define_sig", "define_pred", "allow_multiple" ];
   static shakudo_comments_blockers = {  // as in "starts a block"
     "edit": OParseBlockType.EDIT,
     "text": OParseBlockType.TEXT
