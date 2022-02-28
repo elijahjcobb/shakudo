@@ -11,7 +11,9 @@
 import CodeMirror from "codemirror";
 import {BlocklyParse} from "./BlocklyParser";
 import Blockly from "blockly";
-import {setupBlocks, setupToolboxContents, setupToolboxWorkspace, Alloy} from "./alloy_generator"
+import {setupBlocks, setupToolboxContents, setupToolboxWorkspace, Alloy,
+					binding_blocks, set_op_blocks,  quant_list, un_op_list, bin_op_list, compare_op_list, set_bin_op_list} from "./alloy_generator"
+
 
 /**
  * Importing Styles.
@@ -83,9 +85,9 @@ window.onresize = () => {
  * This is called when the window is loaded.
  */
 window.onload = () => {
-	const div = document.getElementById("editor");
-	if (!div) return;
-	const editor: CodeMirror.Editor = CodeMirror(div, {
+	const editor_div = document.getElementById("editor");
+	if (!editor_div) return;
+	const editor: CodeMirror.Editor = CodeMirror(editor_div, {
 		mode: {name: "javascript"},
 		theme: "nord",
 		lineNumbers: true,
@@ -97,8 +99,11 @@ window.onload = () => {
 		// readOnly: "nocursor",
 		electricChars: true
 	});
-	setupBlocks();
 
+
+	/*   Construct the eeditor window, esp on loading a file */
+
+	setupBlocks();
 	currentParse = BlocklyParse.parse("");
 
 	var blocklyDiv_container = document.getElementById("blocklyDiv_container");
@@ -193,7 +198,7 @@ window.onload = () => {
 	ipcRenderer.on("set", (event: any, message: any) => {
 		currentParse = BlocklyParse.parse(message);
 		editor.setValue(currentParse.dispLines.join("\n"));
-
+		error_popup_hide();
 		blocklyDiv_container.innerHTML = "";
 		listBlocklyWorkplaces = [];
 		const tabs_div = document.createElement("div");
@@ -212,7 +217,7 @@ window.onload = () => {
 										};
 			editor.markText({line: loc.s, ch: 0}, {line: loc.s + loc.l - 1, ch: editor.getLine(loc.s+loc.l-1).length}, options);
 
-			if(loc.b.editable) {
+			if(loc.b.represented) {
 				createTab(tabs_div, i, j, (loc.b.title ? loc.b.title : `Block ${j}`)  );
 				createWorkspace(i, j); // should be the jth entry; other could add an index map or something
 				++j;
@@ -233,6 +238,9 @@ window.onload = () => {
 
 	});
 
+
+	/*   Save the editor's contents  */
+
 	var get_save_callback = () => {
 		let marks = editor.getAllMarks();
 		let editorValue = editor.getValue().split("\n");
@@ -248,25 +256,174 @@ window.onload = () => {
 	};
 	ipcRenderer.on("get-save", get_save_callback);
 
-	editor.on("changes", (editor, changes) => {
 
-	});
+
+	/*   Compiling blocks -> alloy  */
+
+	var error_popup = document.getElementById("compile_popup");
+	var error_popup_content = error_popup.getElementsByClassName("compile_content")[0];
+	function error_popup_show(left, top, message) {
+		error_popup_content.innerHTML = message;
+		error_popup.style.left = left + "px";
+		error_popup.style.top = top + "px";
+		error_popup.classList.add("show");
+	};
+	function error_popup_hide() {
+		error_popup.classList.remove("show");
+	};
+	error_popup.getElementsByClassName("popup_button")[0].addEventListener("click", error_popup_hide);
+
+	function show_error_on_target_block(block, message) {
+		let other_id = block.id;
+		let block_dom = document.querySelectorAll(`[data-id="${other_id}"]`)[0];	// surely there's a better way...
+		let position = block_dom.getBoundingClientRect();
+		error_popup_show(position.right + 20, position.top + 20, message);
+	};
+
+	var overlay = document.getElementById("screenflash");
+	function flashWindow(greenorred) {
+		overlay.style.backgroundColor = greenorred ? "#66ff00" : "red";
+		overlay.style.animation = "";
+		overlay.style.animation = "screenflash 0.2s ease-out";
+		setTimeout( () => { overlay.style.animation = ""; }, 200);
+  };
+
+	/* used below, to check for incorrectly-bound variables */
+//	function descend_tree_bounds__foundItException(blk) {
+//		this.block = blk;
+//		this.name = 'FoundItException';
+//	}
+	function descend_tree_bounds__unboundException(blk) {
+		this.block = blk;
+		this.name = 'UnboundVarException';
+		this.message = "Block references a variable that isn't bound yet";
+	}
+	function descend_tree_bounds__wrongTypeException(blk) {
+		this.block = blk;
+		this.name = 'WrongTypeException';
+		this.message = "Block received the wrong type of input";
+	}
+	function descend_tree_bounds__rebindException(blk) {
+		this.block = blk;
+		this.name = 'RebindException';
+		this.message = "Rebinding the same name is discouraged";
+	}
+	function descend_tree(parseBlock, block, bound_names) {
+		console.log("-------");
+		console.log(" " + block + " ");
+		console.log(block);
+		console.log(bound_names);
+		// check if names are bound in get_ blocks, add bound vars in quants
+		let this_level = [];
+		if(block.type.startsWith("get_")) {		// getter for user vars
+			let get_var_id = block.getFieldValue('VAR');
+			if( ! bound_names.hasOwnProperty(  get_var_id  )) {		// unbound variable
+				throw new descend_tree_bounds__unboundException(block);
+			}
+			return bound_names[get_var_id];
+		}
+		if(block.type.startsWith("fixed_get_")) {	// getter for sigs
+			// TODO: handle predefined variables.
+			// for now, just sigs -- assume set type
+			let get_fix_var_sig = block.getFieldValue('VAR');
+			return get_fix_var_sig;
+		}
+		if(binding_blocks.includes(block.type)) {	// quantifiers, atm
+			let bind_var = block.getFieldValue('NAME');
+			let bind_var_type = descend_tree(parseBlock,  block.getInputTargetBlock('condition'), bound_names);
+
+
+			if(bound_names.hasOwnProperty(bind_var)) throw new descend_tree_bounds__rebindException(block);
+			bound_names[bind_var] = bind_var_type;
+			this_level.push(bind_var);
+
+			descend_tree(parseBlock, block.getInputTargetBlock("statement"), bound_names);
+
+			delete bound_names[bind_var];
+			return; // vertical connections are fine and all boolean, unless something's gone terribly wrong somehow
+		}
+		if(block.type.startsWith("fixed_pred_")) {	// fixed predicates
+			let pred_type = block.getFieldValue('VAR');
+			let want_types = parseBlock.fixed_predicates[pred_type];   //JSON.parse(block.data);
+			for(let i = 0; i < want_types.length; ++i) {
+				let child_block = block.getInputTargetBlock("param_" + i);
+				console.log(child_block);
+				let child_type = descend_tree(parseBlock, child_block, bound_names);
+				if(child_type != want_types[i])   throw new descend_tree_bounds__wrongTypeException(child_block);
+			}
+			return;
+		}
+		if(compare_op_list.includes(block.type)) { // check types match for == or !=
+			let type1 = descend_tree(parseBlock, block.getInputTargetBlock("left_value"), bound_names);
+			let type2 = descend_tree(parseBlock, block.getInputTargetBlock("right_value"), bound_names);
+			if(type1 != type2)   throw new descend_tree_bounds__wrongTypeException(block);
+			return;
+		}
+		if(un_op_list.includes(block.type)) {
+			descend_tree(parseBlock, block.getInputTargetBlock("statement"), bound_names);
+			return;
+		}
+		if(bin_op_list.includes(block.type)) {
+			descend_tree(parseBlock, block.getInputTargetBlock("left_statement"), bound_names);
+			descend_tree(parseBlock, block.getInputTargetBlock("right_statement"), bound_names);
+			return;
+		}
+		if(set_bin_op_list.includes(block.type)) {
+			let type1 = descend_tree(parseBlock, block.getInputTargetBlock("left_value"), bound_names);
+			let type2 = descend_tree(parseBlock, block.getInputTargetBlock("right_value"), bound_names);
+			switch(block.type) {
+				case "-": return type1;
+				case "+": return type1;		// completely WRONG
+				case "&": return type1; 	// basically  WRONG
+			}
+		}
+		throw new Error("how did this happen");
+	};
 
 	ipcRenderer.on("cmd-compile", () => {
 		const tab_div = shak_tabs_div.children.item(selected_index);
 		const tab_wrk = listBlocklyWorkplaces[selected_index].workspace;
 		const source_index = parseInt(tab_div.dataset.block_index);
 		const tab_block = currentParse.locations[source_index].b;
-
 		let code = "";
+
+		/*  Check for compilation error/etc  */
+		// Check for too many root blocks
 		if(tab_wrk.getTopBlocks().length > 1 && !tab_block.allow_multiple) {
-			// TODO TODO: popup user-friendly error messages, maybe an 'aborted' animation or red window flash
-			console.error("Too many top-level blocks");
-			Alloy.init(tab_wrk);
-			code = Alloy.blockToCode(tab_wrk.getTopBlocks()[0]);
-		} else {
-			code = Alloy.workspaceToCode(tab_wrk);
+			let other_block = tab_wrk.getTopBlocks()[1];
+			show_error_on_target_block(other_block, "Only one root block allowed!");
+			flashWindow(false);
+			//Alloy.init(tab_wrk);
+			//code = Alloy.blockToCode(tab_wrk.getTopBlocks()[0]);
+			return;
 		}
+		// Check for incomplete block structure
+		for(let block of tab_wrk.getTopBlocks()) {
+			if(! block.allInputsFilled()) {
+				show_error_on_target_block(block, "Missing inputs -- incomplete block!");
+				flashWindow(false);
+				return;
+			}
+		}
+		// check for wrongly bound variables and wrong types
+		let fixed_vals = tab_block.fixed_set_names;	// the predefined sigs, for now
+		for(let block of tab_wrk.getTopBlocks()) {
+			try {
+				descend_tree(tab_block, block, {});
+			} catch(e) {
+				if(e instanceof descend_tree_bounds__unboundException || e instanceof descend_tree_bounds__wrongTypeException || e instanceof descend_tree_bounds__rebindException) {
+					show_error_on_target_block(e.block, e.message);
+					flashWindow(false);
+					return;
+				}
+				throw e;
+			}
+		}
+
+		//  Compile and update the editor
+		error_popup_hide();
+		flashWindow(true);
+		code = Alloy.workspaceToCode(tab_wrk);
 		let rendered_text = code.split("\n");
 
 		tab_block.textLines = rendered_text;
@@ -276,6 +433,12 @@ window.onload = () => {
 		let place = marks[source_index].find();
 		editor.replaceRange(tab_block.dispLines.join("\n"), place.from, place.to);
 	});
+
+
+
+
+
+	/* Misc */
 
 	ipcRenderer.on("get-run", () => {
 		get_save_callback();

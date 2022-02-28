@@ -1,6 +1,6 @@
 import Blockly from "blockly"
 import {ParseBlock} from "./BlocklyParser"
-
+//import JSON
 
 // block definitions -- defined at the bottom of this file
 var block_defs;
@@ -8,12 +8,11 @@ var gen_pred_thing;
 var fixed_var_def_func, create_var_def_func, quant_def_func, un_op_def_func, bin_op_def_func, compare_op_def_func, set_bin_op_def_func;
 
 // function implementations in setupBlocks
-var quant_list  = ["all", "some", "one", "lone", "no"];
-var un_op_list  = ["not"];
-var bin_op_list = ["and", "or", "implies", "iff"];
-var compare_op_list = ["=", "<", ">", "<=", ">=", "!="];  // todo: human-friendly words (dict?)
-var set_bin_op_list = [ "-", "+", "&" ]
-
+export var quant_list  = ["all", "some", "one", "lone", "no"];
+export var un_op_list  = ["not"];
+export var bin_op_list = ["and", "or", "implies", "iff"];
+export var compare_op_list = ["=", "!="];  // todo: human-friendly words (dict?)
+export var set_bin_op_list = [ "-", "+", "&" ]
 
 /*
 Extremely important: at the moment, I'm distinguishing between variables
@@ -27,18 +26,23 @@ Other notes: as of this comment, predef_var isn't actually used (intended to be
 */
 
 // TYPE: 'var'   -- the two subcategories below are for the getter blocks
-var var_types = [ "predef_var", "bound_var" ];
-var fixed_var_types = [ "predef_var" ];       // subset of var_types
-var creatable_var_types = [ "bound_var" ];   // subset of var_types
+export var var_types = [ "predef_var", "bound_var" ];
+export var fixed_var_types = [ "predef_var" ];       // subset of var_types
+export var creatable_var_types = [ "bound_var" ];   // subset of var_types
 
 // TYPE: 'set'  -- the type of sigs, as well as sig ops (eg A intersect B)
-var set_types = [ "predef_set" ]
-var fixed_set_types = [ "predef_set" ]
+export var set_types = [ "predef_set" ]
+export var fixed_set_types = [ "predef_set" ]
   // can't currently create set vars
 
 // TYPE: actually none yet, vertical connections are boolean-valued and
 //   there's nothing else at the moment so no need for type checking
-var expr_types = [ "statement_expr" ];
+export var expr_types = [ "statement_expr" ];
+
+
+// for the sake of checking if vars are bound
+export var binding_blocks = quant_list;
+export var set_op_blocks = set_bin_op_list;
 
 // ---------------------------------------------------------
 
@@ -85,8 +89,6 @@ Alloy.scrub_ = function(block, code, opt_thisOnly) {
  */
 export function setupBlocks(): Blockly.Toolbox {
   let upd_block_defs = [...block_defs];
-
-
 
   // 'get' functions -- happen to overlap for the local, fixed, and pred types
   let get_func = function(block) {
@@ -147,18 +149,33 @@ export function setupBlocks(): Blockly.Toolbox {
       var variable = Alloy.nameDB_.getName(block.getFieldValue('NAME'), 'VARIABLE');
 
       var code = inp_str + ' ' + variable + ': ' + source_set + ' {\n'
-      + substatements
-      + "}";
-      return code + "\n";
+      + substatements;
+      if(substatements[substatements.length - 1] !== "\n") code += "\n";
+      code += "}";
+      return code ;//+ "\n";
     };
     upd_block_defs.push(quant_def_func(inp_str));
   };
   quant_list.forEach( quant_func );
 
+
+  // wrap in parens if it has children... overnethusiastic but should be
+  //   good enough for now, without wrapping literally everything
+  function _wrapper(block, statement, func) {
+    var content = func(block, statement);
+    if(block.getChildren().length > 0 && block.getChildren()[0].getChildren().length > 0) {
+      content = '( ' + content + ' )';
+    }
+    return content;
+  };
+  var wrap_state = (block, statement) => _wrapper(block, statement, (b,s) => Alloy.statementToCode(b,s)  );
+  var wrap_value = (block, statement) => _wrapper(block, statement, (b, s) => Alloy.valueToCode(b, s, 0) || " " );
+
+
   // unary formula operators
   function un_op_func(inp_str) {
     Alloy[inp_str] = function(block) {
-      var left = Alloy.statementToCode(block, 'statement');
+      let left = wrap_state(block, "statement")
       return inp_str + ' ' + left;
     };
     upd_block_defs.push(un_op_def_func(inp_str));
@@ -168,8 +185,8 @@ export function setupBlocks(): Blockly.Toolbox {
   // binary formula operators
   function bin_op_func(inp_str) {
     Alloy[inp_str] = function(block) {
-      var left = Alloy.statementToCode(block, 'left_statement');
-      var right = Alloy.statementToCode(block, 'right_statement');
+      var left = wrap_state(block, 'left_statement');
+      var right = wrap_state(block, 'right_statement');
       var code = left + ' ' + inp_str + ' ' + right;
       return code;
     };
@@ -179,8 +196,8 @@ export function setupBlocks(): Blockly.Toolbox {
 
   function compare_op_func(inp_str) {
     Alloy[inp_str] = function(block) {
-      var left = Alloy.valueToCode(block, 'left_value', 0) || " ";
-      var right = Alloy.valueToCode(block, 'right_value', 0) || " ";
+      var left  = wrap_value(block, 'left_value');
+      var right = wrap_value(block, 'right_value');
       var code = left + ' ' + inp_str + ' ' + right;
       return code;
     };
@@ -190,8 +207,8 @@ export function setupBlocks(): Blockly.Toolbox {
 
   function set_bin_op_func(inp_str) {
     Alloy[inp_str] = function(block) {
-      var left = Alloy.valueToCode(block, 'left_value', 0) || " ";
-      var right = Alloy.valueToCode(block, 'right_value', 0) || " ";
+      var left  = wrap_value(block, 'left_value');
+      var right = wrap_value(block, 'right_value');
       var code = left + ' ' + inp_str + ' ' + right;
       return [code, 0];
     };
@@ -232,6 +249,7 @@ export function setupToolboxContents(block: ParseBlock) {
     "fields": {
       "VAR": key,
     },
+    //"data": JSON.stringify(value)     // using this here to track types
   }; }));
 
 
