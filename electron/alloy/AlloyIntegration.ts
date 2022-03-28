@@ -38,14 +38,16 @@ export class AlloyIntegration {
 	 * @private
 	 */
 	private onClose(code: number): void {
-		if (code === 2) {
+		if(code === 2) { // compile error
 			const raw = this._cache.join("");
 			console.log(raw);
 			const obj = JSON.parse(raw);
 			console.error(obj);
 			this._window.webContents.send("handle-error-compile", obj);
 			this._cache.splice(0, this._cache.length);
-		}
+		} else if(code === 7) {
+      this._window.webContents.send("handle-no-instance");
+    }
 	}
 
 	/**
@@ -56,6 +58,7 @@ export class AlloyIntegration {
 	private onStdErr(data: any): void {
 		const msg = data.toString();
 		console.error(msg);
+    console.error("BARGLE BARGLE <" + msg + "> BAAARGLEZ");
 		this._window.webContents.send("handle-error-run");
 	}
 

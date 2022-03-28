@@ -199,6 +199,7 @@ window.onload = () => {
 		currentParse = BlocklyParse.parse(message);
 		editor.setValue(currentParse.dispLines.join("\n"));
 		error_popup_hide();
+		no_instance_popup_hide();
 		blocklyDiv_container.innerHTML = "";
 		listBlocklyWorkplaces = [];
 		const tabs_div = document.createElement("div");
@@ -281,8 +282,10 @@ window.onload = () => {
 	};
 
 	var overlay = document.getElementById("screenflash");
-	function flashWindow(greenorred) {
-		overlay.style.backgroundColor = greenorred ? "#66ff00" : "red";
+	var flash_palette = {"green": "#66ff00", "red": "red", "yellow": "#FFDB58"}
+	function flashWindow(color) {
+		let color_code = flash_palette[color];
+		overlay.style.backgroundColor = color_code;
 		overlay.style.animation = "";
 		overlay.style.animation = "screenflash 0.2s ease-out";
 		setTimeout( () => { overlay.style.animation = ""; }, 200);
@@ -309,10 +312,10 @@ window.onload = () => {
 		this.message = "Rebinding the same name is discouraged";
 	}
 	function descend_tree(parseBlock, block, bound_names) {
-		console.log("-------");
-		console.log(" " + block + " ");
-		console.log(block);
-		console.log(bound_names);
+		//console.log("-------");
+		//console.log(" " + block + " ");
+		//console.log(block);
+		//console.log(bound_names);
 		// check if names are bound in get_ blocks, add bound vars in quants
 		let this_level = [];
 		if(block.type.startsWith("get_")) {		// getter for user vars
@@ -392,7 +395,7 @@ window.onload = () => {
 		if(tab_wrk.getTopBlocks().length > 1 && !tab_block.allow_multiple) {
 			let other_block = tab_wrk.getTopBlocks()[1];
 			show_error_on_target_block(other_block, "Only one root block allowed!");
-			flashWindow(false);
+			flashWindow("red");
 			//Alloy.init(tab_wrk);
 			//code = Alloy.blockToCode(tab_wrk.getTopBlocks()[0]);
 			return;
@@ -401,7 +404,7 @@ window.onload = () => {
 		for(let block of tab_wrk.getTopBlocks()) {
 			if(! block.allInputsFilled()) {
 				show_error_on_target_block(block, "Missing inputs -- incomplete block!");
-				flashWindow(false);
+				flashWindow("red");
 				return;
 			}
 		}
@@ -413,7 +416,7 @@ window.onload = () => {
 			} catch(e) {
 				if(e instanceof descend_tree_bounds__unboundException || e instanceof descend_tree_bounds__wrongTypeException || e instanceof descend_tree_bounds__rebindException) {
 					show_error_on_target_block(e.block, e.message);
-					flashWindow(false);
+					flashWindow("red");
 					return;
 				}
 				throw e;
@@ -422,7 +425,8 @@ window.onload = () => {
 
 		//  Compile and update the editor
 		error_popup_hide();
-		flashWindow(true);
+		no_instance_popup_hide();
+		flashWindow("green");
 		code = Alloy.workspaceToCode(tab_wrk);
 		let rendered_text = code.split("\n");
 
@@ -453,6 +457,15 @@ window.onload = () => {
 		editor.setCursor(error.y1-1, error.x1 -1, {scroll: true});
 		showAlert(error.msg);
 		editor.markText({ch: error.x1 - 1, line: error.y1-1}, {ch: error.x2, line: error.y1 -1}, {css: "background: red;"});
+	});
+
+	var no_instance_popup = document.getElementById("no_instance_popup");
+	function no_instance_popup_show() {  no_instance_popup.classList.add("show");     };
+	function no_instance_popup_hide() {  no_instance_popup.classList.remove("show");	};
+	no_instance_popup.getElementsByClassName("popup_button")[0].addEventListener("click", no_instance_popup_hide);
+	ipcRenderer.on("handle-no-instance", () => {
+		flashWindow("yellow");
+		no_instance_popup_show();
 	});
 
 	setupAlert();
