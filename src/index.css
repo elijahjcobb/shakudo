@@ -39,6 +39,9 @@ body {
   color: #666782;
 }
 
+.shakudo-block[data-block-type="edit"]::selection {
+  background: red;
+}
 /**
  * Elijah Cobb
  * elijah@elijahcobb.com
@@ -277,6 +280,29 @@ body {
   cursor: pointer;
   overflow: hidden;
   outline: none;
+}
+
+.popup:after, .popup:before {
+	right: 100%;
+	top: 50%;
+	border: solid transparent;
+	content: "";
+	height: 0;
+	width: 0;
+	position: absolute;
+	pointer-events: none;
+}
+.popup:after {
+	border-color: rgba(255, 0, 0, 0);
+	border-right-color: #FF0000;
+	border-width: 10px;
+	margin-top: -10px;
+}
+.popup:before {
+	border-color: rgba(0, 0, 0, 0);
+	border-right-color: #000000;
+	border-width: 13px;
+	margin-top: -13px;
 }
 
 @keyframes fadeIn {

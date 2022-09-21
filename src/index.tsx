@@ -270,15 +270,19 @@ window.onload = () => {
 		error_popup.classList.add("show");
 	};
 	function error_popup_hide() {
+		//if(last_error_select !== null) last_error_select.removeSelect();
 		error_popup.classList.remove("show");
 	};
 	error_popup.getElementsByClassName("popup_button")[0].addEventListener("click", error_popup_hide);
 
+	//var last_error_select = null;
 	function show_error_on_target_block(block, message) {
+		//last_error_select = block;
+		block.select();
 		let other_id = block.id;
 		let block_dom = document.querySelectorAll(`[data-id="${other_id}"]`)[0];	// surely there's a better way...
 		let position = block_dom.getBoundingClientRect();
-		error_popup_show(position.right + 20, position.top + 20, message);
+		error_popup_show(position.right + 20, position.top - 20, message);
 	};
 
 	var overlay = document.getElementById("screenflash");

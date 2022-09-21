@@ -4,7 +4,7 @@ import {ParseBlock} from "./BlocklyParser"
 
 // block definitions -- defined at the bottom of this file
 var block_defs;
-var gen_pred_thing;
+var gen_pred_thing, gen_inline_arg_pred_thing;
 var fixed_var_def_func, create_var_def_func, quant_def_func, un_op_def_func, bin_op_def_func, compare_op_def_func, set_bin_op_def_func;
 
 // function implementations in setupBlocks
@@ -121,12 +121,9 @@ export function setupBlocks(): Blockly.Toolbox {
       // update: there is a better way, see the generators in blockly package
       //  changing to that format is low priority since this works fine for now
   var MAX_PREDICATE_SIZE = 10;  // again, there should be a better way than this...
-  for(let n = 0; n <= MAX_PREDICATE_SIZE; ++n) {
-    let block_type = `fixed_pred_${n}`;
-    let block_def = gen_pred_thing(n, block_type);
-    upd_block_defs.push( block_def );
 
-    Alloy[block_type] = function(block) {
+  function pred_resp_function(n) {
+    return function(block) {
       let code = Alloy.nameDB_.getName(block.getFieldValue('VAR'), 'VARIABLE') + "[";
 
       let inputList = [];
@@ -139,7 +136,21 @@ export function setupBlocks(): Blockly.Toolbox {
       return code;
     }
   }
-
+  for(let n = 0; n <= MAX_PREDICATE_SIZE; ++n) {
+    let block_type = `fixed_pred_${n}`;
+    let block_def = gen_pred_thing(n, block_type);
+    upd_block_defs.push( block_def );
+    Alloy[block_type] = pred_resp_function(n)
+  }
+  // There is currently no way to mix inline and normal inputs
+  // and it's currently not worth the effort to cludge up something broken
+  // so, no more than 2 inputs: the inline first one and the second one (ig)
+  for(let n = 0; n <= 2; ++n) {
+    let block_type = `fixed_pred_inline_${n}`;
+    let block_def = gen_inline_arg_pred_thing(n, block_type);
+    upd_block_defs.push( block_def );
+    Alloy[block_type] = pred_resp_function(n)
+  }
 
   // formula quantifiers, aka that evaluate to a boolean, eg all k: Kitteh | pred(k)
   function quant_func(inp_str) {
@@ -243,9 +254,17 @@ export function setupToolboxContents(block: ParseBlock) {
 
   toolbox["contents"].push(...[ {"kind": "label", "text": "Predefined Predicates:", "web-class": "toolbox_style", } ]);
   // TODO: Enforce types; implement named args; change the format for this all
-  toolbox["contents"].push(...Object.entries(block.fixed_predicates).map( ([key, value]) => { return {
+  toolbox["contents"].push(...Object.entries(block.fixed_predicates).filter(([k,v]) => !(block.fixed_predicates_inline[k])).map( ([key, value]) => { return {
     "kind": "block",
     "type": `fixed_pred_${value.length}`,
+    "fields": {
+      "VAR": key,
+    },
+    //"data": JSON.stringify(value)     // using this here to track types
+  }; }));
+  toolbox["contents"].push(...Object.entries(block.fixed_predicates).filter(([k,v]) => (block.fixed_predicates_inline[k])).map( ([key, value]) => { return {
+    "kind": "block",
+    "type": `fixed_pred_inline_${value.length}`,
     "fields": {
       "VAR": key,
     },
@@ -406,6 +425,13 @@ gen_pred_thing = (n, block_type) => {
   return thing;
 };
 
+// see above mention: N<=2 is strongly preferred
+gen_inline_arg_pred_thing = (n, block_type) => {
+  let thing = gen_pred_thing(n, block_type);
+  let temp = thing["args0"][1]; thing["args0"][1] = thing["args0"][0]; thing["args0"][0] = temp;
+  thing["inputsInline"] = true;
+  return thing;
+};
 
 create_var_def_func = (var_type) => { return {
   "type": "get_" + var_type,
