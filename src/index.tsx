@@ -397,7 +397,7 @@ window.onload = () => {
 			let type1 = descend_tree(parseBlock, block.getInputTargetBlock("left_value"), bound_names);
 			let type2 = descend_tree(parseBlock, block.getInputTargetBlock("right_value"), bound_names);
 			switch(block.type) {
-				case "-": return type1;		// strictly speaking this is correct
+				case "-": return type1;		// strictly speaking this is correct, but it'll break strict pred-type checking
 				case "+": return Array.from(new Set( [...type1, ...type2] ));
 				case "&":
 				  let rtype = [];

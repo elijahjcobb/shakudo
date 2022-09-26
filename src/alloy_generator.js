@@ -12,7 +12,10 @@ export var quant_list  = ["all", "some", "one", "lone", "no"];
 export var un_op_list  = ["not"];
 export var bin_op_list = ["and", "or", "implies", "iff"];
 export var compare_op_list = ["=", "!="];  // todo: human-friendly words (dict?)
-export var set_bin_op_list = [ "-", "+", "&" ]
+export var set_bin_op_list = [ "-", ["+", "union"], ["&", "intersect"] ]
+
+// misc
+var translate_convenient;
 
 /*
 Extremely important: at the moment, I'm distinguishing between variables
@@ -216,14 +219,15 @@ export function setupBlocks(): Blockly.Toolbox {
   }
   compare_op_list.forEach( compare_op_func ); // currently the same function
 
-  function set_bin_op_func(inp_str) {
+  function set_bin_op_func(inp_) {
+    const [inp_str, inp_label] = translate_convenient(inp_);
     Alloy[inp_str] = function(block) {
       var left  = wrap_value(block, 'left_value');
       var right = wrap_value(block, 'right_value');
       var code = left + ' ' + inp_str + ' ' + right;
       return [code, 0];
     };
-    upd_block_defs.push(set_bin_op_def_func(inp_str));
+    upd_block_defs.push(set_bin_op_def_func(inp_str, inp_label));
   }
   set_bin_op_list.forEach( set_bin_op_func ); // currently the same function
 
@@ -294,7 +298,7 @@ export function setupToolboxContents(block: ParseBlock) {
 
   let generic_map_func = (blk) => { return {
     "kind": "block",
-    "type": blk
+    "type": translate_convenient(blk)[0]
   }; };
   let generic_concat = (list) => {
     toolbox["contents"] = toolbox["contents"].concat(list.map(generic_map_func));
@@ -399,6 +403,15 @@ Blockly.blockRendering.register('custom_renderer', CustomRenderer);
 
 // ---------------------------------------------------------
 /*   Block definitions */
+
+translate_convenient = (inp_) => {
+  if(typeof(inp_) == 'string') {
+    return [inp_, inp_];
+  } else {
+    return [ inp_[0], inp_[1] ];
+  }
+};
+
 
 gen_pred_thing = (n, block_type) => {
   let message = [...Array(n+1).keys()].map( i => `%${i+1}`).join(" ");
@@ -562,8 +575,8 @@ compare_op_def_func = (text) => { return {
 }; };
 
 
-set_bin_op_def_func = (text) => { return {
-  "type": text,
+set_bin_op_def_func = (typetext, text) => { return {
+  "type": typetext,
   "message0": `%1 ${text} %2`,
   "args0": [
     {
