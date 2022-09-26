@@ -320,8 +320,10 @@ window.onload = () => {
 		//console.log(" " + block + " ");
 		//console.log(block);
 		//console.log(bound_names);
+		//console.log(block.type);
 		// check if names are bound in get_ blocks, add bound vars in quants
-		let this_level = [];
+		//let this_level = [];
+
 		if(block.type.startsWith("get_")) {		// getter for user vars
 			let get_var_id = block.getFieldValue('VAR');
 			if( ! bound_names.hasOwnProperty(  get_var_id  )) {		// unbound variable
@@ -333,16 +335,15 @@ window.onload = () => {
 			// TODO: handle predefined variables.
 			// for now, just sigs -- assume set type
 			let get_fix_var_sig = block.getFieldValue('VAR');
-			return get_fix_var_sig;
+			return [[ get_fix_var_sig ]]; //ugh
 		}
 		if(binding_blocks.includes(block.type)) {	// quantifiers, atm
 			let bind_var = block.getFieldValue('NAME');
 			let bind_var_type = descend_tree(parseBlock,  block.getInputTargetBlock('condition'), bound_names);
 
-
 			if(bound_names.hasOwnProperty(bind_var)) throw new descend_tree_bounds__rebindException(block);
 			bound_names[bind_var] = bind_var_type;
-			this_level.push(bind_var);
+			//this_level.push(bind_var);
 
 			descend_tree(parseBlock, block.getInputTargetBlock("statement"), bound_names);
 
@@ -352,18 +353,35 @@ window.onload = () => {
 		if(block.type.startsWith("fixed_pred_")) {	// fixed predicates
 			let pred_type = block.getFieldValue('VAR');
 			let want_types = parseBlock.fixed_predicates[pred_type];   //JSON.parse(block.data);
+			//console.log(want_types);
 			for(let i = 0; i < want_types.length; ++i) {
 				let child_block = block.getInputTargetBlock("param_" + i);
-				console.log(child_block);
+				//console.log(child_block);
 				let child_type = descend_tree(parseBlock, child_block, bound_names);
-				if(child_type != want_types[i])   throw new descend_tree_bounds__wrongTypeException(child_block);
+				//if(child_type != want_types[i])   throw new descend_tree_bounds__wrongTypeException(child_block);
+				let wtypes = [[ want_types[i] ]];  // TODO change, stopgap
+				//console.log(child_type);
+				//console.log(wtypes);
+				// TODO: add 'sig type A is a subset of sig type B'
+				// each of the child's OR'd clauses must be a superset (more fine) at least one of the wanted clauses
+				loop_outty:
+				for(const cs of child_type) {
+					for(const ws of wtypes) {
+						for(const wp of ws) {
+							if(cs.includes(wp)) { continue loop_outty; }
+						}
+					}
+					throw new descend_tree_bounds__wrongTypeException(child_block);
+				}
+
 			}
 			return;
 		}
 		if(compare_op_list.includes(block.type)) { // check types match for == or !=
 			let type1 = descend_tree(parseBlock, block.getInputTargetBlock("left_value"), bound_names);
 			let type2 = descend_tree(parseBlock, block.getInputTargetBlock("right_value"), bound_names);
-			if(type1 != type2)   throw new descend_tree_bounds__wrongTypeException(block);
+			//if(type1 != type2)   throw new descend_tree_bounds__wrongTypeException(block);
+			// this should be a warning, but isn't technically an error
 			return;
 		}
 		if(un_op_list.includes(block.type)) {
@@ -379,9 +397,16 @@ window.onload = () => {
 			let type1 = descend_tree(parseBlock, block.getInputTargetBlock("left_value"), bound_names);
 			let type2 = descend_tree(parseBlock, block.getInputTargetBlock("right_value"), bound_names);
 			switch(block.type) {
-				case "-": return type1;
-				case "+": return type1;		// completely WRONG
-				case "&": return type1; 	// basically  WRONG
+				case "-": return type1;		// strictly speaking this is correct
+				case "+": return Array.from(new Set( [...type1, ...type2] ));
+				case "&":
+				  let rtype = [];
+					for(const ys of type2) {
+						for(const xs of type1) {
+							rtype.push(Array.from(new Set( [...xs, ...ys] )));
+						}
+					}
+					return rtype;
 			}
 		}
 		throw new Error("how did this happen");
