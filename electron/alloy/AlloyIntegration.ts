@@ -59,7 +59,7 @@ export class AlloyIntegration {
 		const msg = data.toString();
 		console.error(msg);
     console.error("BARGLE BARGLE <" + msg + "> BAAARGLEZ");
-		this._window.webContents.send("handle-error-run");
+		this._window.webContents.send("handle-error-run", msg);
 	}
 
 	/**

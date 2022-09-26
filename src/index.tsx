@@ -478,8 +478,8 @@ window.onload = () => {
 		ipcRenderer.invoke("get-run", editor.getValue()).catch(console.error);
 	});
 
-	ipcRenderer.on("handle-error-run", () => {
-		alert("Source code incorrect. Failed to compile.")
+	ipcRenderer.on("handle-error-run", (event: any, msg: string) => {
+		alert("Source code incorrect. Failed to compile. Reason for failure:\n" + msg)
 	});
 
 	ipcRenderer.on("handle-error-compile", (event: any, error: {msg: string, x1: number, x2: number, y1: number, y2: number}) => {
