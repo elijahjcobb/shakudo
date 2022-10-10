@@ -24,24 +24,39 @@ body {
   -webkit-user-select: none;
 }
 
+/*
+.cm-fat-cursor .CodeMirror-line::selection,
+.cm-fat-cursor .CodeMirror-line > span::selection,
+.cm-fat-cursor .CodeMirror-line > span > span::selection { color: #DC143C !important; background: #DC143C !important; }
+.cm-fat-cursor .CodeMirror-line::-moz-selection,
+.cm-fat-cursor .CodeMirror-line > span::-moz-selection,
+.cm-fat-cursor .CodeMirror-line > span > span::-moz-selection { background: #DC143C !important; }
+.CodeMirror-line::selection, .CodeMirror-line > span::selection, .CodeMirror-line > span > span::selection { background: #DC143C !important; }
+.CodeMirror-line::-moz-selection, .CodeMirror-line > span::-moz-selection, .CodeMirror-line > span > span::-moz-selection { background: #DC143C !important; }
+span.CodeMirror-selectedtext { background: #DC143C !important; }*/
+
+
 .shakudo-block {
-  background: #282c34;
+  background-color: #282c34;
   color: #ccd0d8;
 }
 
-.shakudo-block[data-block-type="text"] {
-  background: #282C34;
-  color: #ccd0d8;
-}
+.shakudo-block[data-block-type="text"] {}
 
 .shakudo-block[data-block-type="edit"] {
-  background: #ffffe0;
+  background-color: #f2f1d5;
   color: #666782;
 }
-
-.shakudo-block[data-block-type="edit"]::selection {
-  background: red;
+.CodeMirror-selected {
+  background-color: #D3D3D3 !important;
 }
+span.CodeMirror-selectedtext {
+    background: none !important;
+    color: #49495e !important;
+}
+
+/*.CodeMirror-selectedtext {  }*/
+
 /**
  * Elijah Cobb
  * elijah@elijahcobb.com

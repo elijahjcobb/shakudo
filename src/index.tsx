@@ -20,6 +20,7 @@ import {setupBlocks, setupToolboxContents, setupToolboxWorkspace, Alloy, op_inte
  */
 import "./index.css";
 import "codemirror/lib/codemirror.css";
+import "codemirror/addon/selection/mark-selection.js"
 import "codemirror/theme/nord.css";
 
 // this isn't great practice, but Electron demands some replacement for prompt()
@@ -97,7 +98,9 @@ window.onload = () => {
 		indentUnit: 4,
 		indentWithTabs: true,
 		// readOnly: "nocursor",
-		electricChars: true
+		electricChars: true,
+		
+		styleSelectedText: true
 	});
 
 
