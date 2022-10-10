@@ -175,6 +175,11 @@ window.onload = () => {
 			tab_wrk_div.style.width = '100%';  tab_wrk_div.style.height = '100%';
 			Blockly.svgResize(temp_wrk);
 		}
+
+		const _bli = listBlocklyWorkplaces[selected_index].block_index;
+		const _bls = currentParse.locations[_bli].s;
+		editor.scrollIntoView({line: Math.max(0,_bls - 6), ch:0});
+		editor.setCursor({line: _bls, ch:0});
 	};
 	function tab_onclick(tab_div) {
 		return function() {
@@ -235,6 +240,11 @@ window.onload = () => {
 			listBlocklyWorkplaces[0].div.hidden = false;
 			selected_index = 0;
 			Blockly.svgResize(listBlocklyWorkplaces[0].workspace);
+
+			const _bls = currentParse.locations[listBlocklyWorkplaces[0].block_index].s;
+			// todo: base on screen size, and maybe use pixels to put roughly to middle of scrn?
+			editor.scrollIntoView({line: Math.max(0, _bls - 20), ch:0});
+			editor.setCursor({line: _bls, ch:0});
 		}
 
 	});
@@ -320,7 +330,7 @@ window.onload = () => {
 		console.log(" " + block + " ");
 		console.log(block);
 		console.log(bound_names);
-		console.log(block.type);*/
+		console.log(block.type);//*/
 		// check if names are bound in get_ blocks, add bound vars in quants
 		//let this_level = [];
 
@@ -368,7 +378,9 @@ window.onload = () => {
 				for(const cs of child_type) {
 					for(const ws of wtypes) {
 						for(const wp of ws) {
-							if(cs.includes(wp)) { continue loop_outty; }
+							for(const cp of cs) {
+								if(cp === wp) { continue loop_outty; }
+							} // god should strike me down for this code
 						}
 					}
 					throw new descend_tree_bounds__wrongTypeException(child_block);
@@ -480,7 +492,7 @@ window.onload = () => {
 
 	ipcRenderer.on("handle-error-run", (event: any, msg: string) => {
 		let mtch = msg.match(/Line ([0-9]+) column ([0-9]+)/g);
-		/*if(mtch !== null) {
+		if(mtch !== null) {
 			let error = {
 				"y1": mtch[0],
 				"x1": mtch[1],
@@ -489,11 +501,12 @@ window.onload = () => {
 			};
 			// todo: wrap this, it's dupe'd below
 			editor.setCursor(error.y1-1, error.x1 -1, {scroll: true});
+			console.log(error);
 			showAlert(error.msg);
 			editor.markText({ch: error.x1 - 1, line: error.y1-1}, {ch: error.x2, line: error.y1 -1}, {css: "background: red;"});
-		} else {*/
-			alert("Source code incorrect. Failed to compile. Reason for failure:\n" + msg);
-		//}
+		} else {
+			alert("Source code error, failed to compile. \nReason for failure:\n" + msg);
+		}
 	});
 
 	ipcRenderer.on("handle-error-compile", (event: any, error: {msg: string, x1: number, x2: number, y1: number, y2: number}) => {

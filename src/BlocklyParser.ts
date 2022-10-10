@@ -79,10 +79,12 @@ export class ParseBlock {
     for(const line of this.blockLines) {
       let shak_line = BlocklyParse.extractShakudoComment(line);
       if(shak_line === "define_sig") {
-        let var_name = line.split("define_sig ")[1].split(" ")[0];
-        this.fixed_set_names.push(var_name);
+        let var_names = line.split("define_sig ")[1].split(" ").map(l=>l.trim()).filter(e=>e.toString());
+        for(const vn of var_names){
+          this.fixed_set_names.push(vn);
+        }
       } else if(shak_line === "define_pred" || shak_line === "define_pred_inline") {
-        let splitter = line.split(shak_line + " ")[1].split(" ");
+        let splitter = line.split(shak_line + " ")[1].split(" ").map(l=>l.trim()).filter(e=>e.toString());
         this.fixed_predicates[ splitter[0] ] = splitter.slice(1);
         this.fixed_predicates_inline[ splitter[0] ] = (shak_line === "define_pred_inline");
       } else if(shak_line === "allow_multiple") {
