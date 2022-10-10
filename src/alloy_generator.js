@@ -15,7 +15,7 @@ export var compare_op_list = ["=", "!="];  // todo: human-friendly words (dict?)
 export var set_bin_op_list = [ "-", ["+", "union"], ["&", "intersect"] ]
 
 // misc
-var translate_convenient;
+var op_internal_translate;
 
 /*
 Extremely important: at the moment, I'm distinguishing between variables
@@ -220,7 +220,7 @@ export function setupBlocks(): Blockly.Toolbox {
   compare_op_list.forEach( compare_op_func ); // currently the same function
 
   function set_bin_op_func(inp_) {
-    const [inp_str, inp_label] = translate_convenient(inp_);
+    const [inp_str, inp_label] = op_internal_translate(inp_);
     Alloy[inp_str] = function(block) {
       var left  = wrap_value(block, 'left_value');
       var right = wrap_value(block, 'right_value');
@@ -298,7 +298,7 @@ export function setupToolboxContents(block: ParseBlock) {
 
   let generic_map_func = (blk) => { return {
     "kind": "block",
-    "type": translate_convenient(blk)[0]
+    "type": op_internal_translate(blk)[0]
   }; };
   let generic_concat = (list) => {
     toolbox["contents"] = toolbox["contents"].concat(list.map(generic_map_func));
@@ -404,7 +404,7 @@ Blockly.blockRendering.register('custom_renderer', CustomRenderer);
 // ---------------------------------------------------------
 /*   Block definitions */
 
-translate_convenient = (inp_) => {
+op_internal_translate = (inp_) => {
   if(typeof(inp_) == 'string') {
     return [inp_, inp_];
   } else {

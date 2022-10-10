@@ -58,7 +58,6 @@ export class AlloyIntegration {
 	private onStdErr(data: any): void {
 		const msg = data.toString();
 		console.error(msg);
-    console.error("BARGLE BARGLE <" + msg + "> BAAARGLEZ");
 		this._window.webContents.send("handle-error-run", msg);
 	}
 

@@ -11,7 +11,7 @@
 import CodeMirror from "codemirror";
 import {BlocklyParse} from "./BlocklyParser";
 import Blockly from "blockly";
-import {setupBlocks, setupToolboxContents, setupToolboxWorkspace, Alloy,
+import {setupBlocks, setupToolboxContents, setupToolboxWorkspace, Alloy, op_internal_translate,
 					binding_blocks, set_op_blocks,  quant_list, un_op_list, bin_op_list, compare_op_list, set_bin_op_list} from "./alloy_generator"
 
 
@@ -316,11 +316,11 @@ window.onload = () => {
 		this.message = "Rebinding the same name is discouraged";
 	}
 	function descend_tree(parseBlock, block, bound_names) {
-		//console.log("-------");
-		//console.log(" " + block + " ");
-		//console.log(block);
-		//console.log(bound_names);
-		//console.log(block.type);
+		/*console.log("-------");
+		console.log(" " + block + " ");
+		console.log(block);
+		console.log(bound_names);
+		console.log(block.type);*/
 		// check if names are bound in get_ blocks, add bound vars in quants
 		//let this_level = [];
 
@@ -393,7 +393,7 @@ window.onload = () => {
 			descend_tree(parseBlock, block.getInputTargetBlock("right_statement"), bound_names);
 			return;
 		}
-		if(set_bin_op_list.includes(block.type)) {
+		if(set_bin_op_list.map(l => (typeof(l) == 'string') ? l : l[0]).includes(block.type)) {
 			let type1 = descend_tree(parseBlock, block.getInputTargetBlock("left_value"), bound_names);
 			let type2 = descend_tree(parseBlock, block.getInputTargetBlock("right_value"), bound_names);
 			switch(block.type) {
@@ -479,7 +479,21 @@ window.onload = () => {
 	});
 
 	ipcRenderer.on("handle-error-run", (event: any, msg: string) => {
-		alert("Source code incorrect. Failed to compile. Reason for failure:\n" + msg)
+		let mtch = msg.match(/Line ([0-9]+) column ([0-9]+)/g);
+		/*if(mtch !== null) {
+			let error = {
+				"y1": mtch[0],
+				"x1": mtch[1],
+				"y2": mtch[0],
+				"x2": mtch[1]+1	// todo fix
+			};
+			// todo: wrap this, it's dupe'd below
+			editor.setCursor(error.y1-1, error.x1 -1, {scroll: true});
+			showAlert(error.msg);
+			editor.markText({ch: error.x1 - 1, line: error.y1-1}, {ch: error.x2, line: error.y1 -1}, {css: "background: red;"});
+		} else {*/
+			alert("Source code incorrect. Failed to compile. Reason for failure:\n" + msg);
+		//}
 	});
 
 	ipcRenderer.on("handle-error-compile", (event: any, error: {msg: string, x1: number, x2: number, y1: number, y2: number}) => {
