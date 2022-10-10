@@ -167,8 +167,11 @@ async function createWindow() {
 	ipcMain.handle("get-run", async (event, arg: string) => {
 		if (!win) return;
 		//fs.writeFileSync(file, arg);
+		var filename = file + "__samp";	//todo mktemp
+		fs.writeFileSync(filename, arg);
+
 		if (integration) integration.stop();
-		integration = new AlloyIntegration(file, win);
+		integration = new AlloyIntegration(filename, win);
 	});
 
 

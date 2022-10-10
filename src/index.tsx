@@ -504,8 +504,23 @@ window.onload = () => {
 	/* Misc */
 
 	ipcRenderer.on("get-run", () => {
-		get_save_callback();
-		ipcRenderer.invoke("get-run", editor.getValue()).catch(console.error);
+		// this should actually only be done on pane switch, but meh
+		const tab_div = shak_tabs_div.children.item(selected_index);
+		const tab_wrk = listBlocklyWorkplaces[selected_index].workspace;
+		const source_index = parseInt(tab_div.dataset.block_index);
+		const tab_block = currentParse.locations[source_index].b;
+		currentParse.dirty_runners(tab_block.title);
+		/*let marks = editor.getAllMarks();
+		for(const runner of currentParse.runners) {
+			let place = marks[source_index].find();
+			editor.replaceRange(runner.dispLines.join("\n"), place.from, place.to)
+		}*/
+
+		get_save_callback();	// calls update text lines, among other things
+		//editor.getValue()
+		const outcontent = currentParse.dispLines.join("\n");
+		console.log(outcontent);
+		ipcRenderer.invoke("get-run", outcontent).catch(console.error);
 	});
 
 	var compile_run_error_popup = document.getElementById("compile_run_error_popup");

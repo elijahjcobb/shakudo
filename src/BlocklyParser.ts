@@ -13,6 +13,7 @@ export const OParseBlockType = {
   HEAD: 2,    // initial header block
   NULL: 3,    // unused at the moment
   MANL: 4,    // manual: editable text, without a corresponding Blockly pane
+  RUN: 5,     // uneditable, disp; contains text that changes based on pane
 } as const;
 type ParseBlockType = typeof OParseBlockType[keyof typeof OParseBlockType];
 const reverseOParseBlockType = Object.values(OParseBlockType);
@@ -42,6 +43,9 @@ export class ParseBlock {
   public fixed_predicates: string[] = [];
   public fixed_predicates_inline: boolean[] = []; // TODO do this better
 
+  public run_edit_blk: string|null = null;
+  public run_cmds: { string: string } = {};
+
   public constructor(input) {
     if(typeof input === 'number') {
       if( !(input in reverseOParseBlockType)) { let msg = "Invalid block type passed to constructor"; console.error(msg); throw msg; }
@@ -59,7 +63,7 @@ export class ParseBlock {
 
     } else { let msg = "Block constructor received a wrong-typed parameter"; console.error(msg); throw msg; }
 
-    this.displayable = [ OParseBlockType.TEXT, OParseBlockType.EDIT, OParseBlockType.MANL ].includes(this.type);
+    this.displayable = [ OParseBlockType.TEXT, OParseBlockType.EDIT, OParseBlockType.MANL, OParseBlockType.RUN ].includes(this.type);
     this.editable = [ OParseBlockType.EDIT, OParseBlockType.MANL ].includes(this.type);
     this.represented = [ OParseBlockType.EDIT ].includes(this.type);
   }
@@ -89,6 +93,10 @@ export class ParseBlock {
         this.fixed_predicates_inline[ splitter[0] ] = (shak_line === "define_pred_inline");
       } else if(shak_line === "allow_multiple") {
         this.allow_multiple = true;
+      } else if(shak_line === "repl_cmd") {
+        // does this actually need to be limited to 'run panes', or could they be global/global-ish? editable?
+        let splitter = line.split(shak_line + " ")[1].split(" ").map(l=>l.trim()).filter(e=>e.toString());
+        this.run_cmds[ splitter[0] ] = splitter[1];
       }
     }
 
@@ -106,6 +114,19 @@ export class ParseBlock {
     if(this.dirty) {
       this.dispLines = this.textLines;
       this.fullLines = [ this.typeLine ].concat(this.blockLines, this.dispLines);
+      if(this.run_edit_blk) {
+        // todo: later, somehow, allow for interweaving w text n such. maybe even in edit blocks etc?
+        console.log(this.run_edit_blk);
+        console.log(this.run_cmds);
+        const here_entries = Object.keys(this.run_cmds).filter( (key)=>(key===this.run_edit_blk) ).map(key=>this.run_cmds[key]);
+        console.log(here_entries);
+        console.log(this.dispLines);
+        for(const he of here_entries) {
+          console.log(he);
+          this.dispLines.push(this.run_cmds[he]);
+        }
+        console.log(this.dispLines);
+      }
       if(this.typeLine === "") this.fullLines.shift();
       this.dirty = false;
     }
@@ -126,6 +147,7 @@ export class BlocklyParse {
 
   public locations: {s: number, l: number, b: ParseBlock | null }[] = [];
   public dispBlocks: ParseBlock[] = [];
+  public runners: ParseBlock[] = [];
 
   /**
    *  Generate a Parse object by calling the static parse() method
@@ -156,6 +178,7 @@ export class BlocklyParse {
       currBlock = firstBlock;
     }
 
+    let runners = [];
 		for (const line of lines) {
       shak_line = BlocklyParse.extractShakudoComment(line);
       if(shak_line === null) {
@@ -168,12 +191,15 @@ export class BlocklyParse {
         currBlock.next = newBlock;
         newBlock.prev = currBlock;
         currBlock = newBlock;
+        if(shak_line === "run") {
+          runners.push(newBlock);
+        }
       }
 		}
     currBlock.parse();
 
 		let outputParse = new BlocklyParse(firstBlock);
-
+    outputParse.runners = runners;
     // creates the initial outputLines and locations;
     //   thereafter it's better to let CodeMirror handle those details,
     //   and update the blocks when necessary.
@@ -182,6 +208,13 @@ export class BlocklyParse {
 
     return outputParse;
 	};
+
+  public dirty_runners(pane: string) {
+    for(const run of this.runners) {
+      run.run_edit_blk = pane;
+      run.dirty = true;
+    }
+  }
 
   public updateTextLines() {
     this.dispLines = [];
@@ -232,11 +265,12 @@ export class BlocklyParse {
     return null;
   };
 
-  static shakudo_comments = [ "edit", "text", "manual", "comment", "define_sig", "define_pred", "define_pred_inline", "allow_multiple" ];
+  static shakudo_comments = [ "edit", "text", "manual", "comment", "define_sig", "define_pred", "define_pred_inline", "allow_multiple", "run", "repl_cmd" ];
   static shakudo_comments_blockers = {  // as in "starts a block"
     "edit": OParseBlockType.EDIT,
     "text": OParseBlockType.TEXT,
-    "manual": OParseBlockType.MANL
+    "manual": OParseBlockType.MANL,
+    "run": OParseBlockType.RUN
   };
 
 };
