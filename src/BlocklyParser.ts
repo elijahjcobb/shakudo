@@ -197,15 +197,22 @@ export class BlocklyParse {
 
   public updateInitLocations() {
     this.locations = [ {s: 0, l: 0, b: null} ];
+    this.full_locations = [ {s: 0, l: 0, b: null} ];
+    let i = 0;
     for(let curr: ParseBlock | null = this.firstBlock; curr !== null; curr = curr.next) {
       curr.updateText();
       if(curr.displayable ) {
-        let prevLoc = this.locations[this.locations.length - 1];
+        i += 1;
+        let prevLoc = this.locations[i - 1];
         this.locations.push(
           { s: prevLoc.s + prevLoc.l, l: curr.textLines.length, b: curr }   );
       }
+      let prevFullLoc = this.full_locations[this.full_locations.length - 1];
+      this.full_locations.push(
+        { s: prevFullLoc.s + prevFullLoc.l, l: curr.fullLines.length, b: curr, lb: i-1 }   );
     }
     this.locations.shift();
+    this.full_locations.shift();
   };
 
 

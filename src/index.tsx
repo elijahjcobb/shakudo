@@ -99,7 +99,7 @@ window.onload = () => {
 		indentWithTabs: true,
 		// readOnly: "nocursor",
 		electricChars: true,
-		
+
 		styleSelectedText: true
 	});
 
@@ -203,6 +203,17 @@ window.onload = () => {
 		tab_div.onclick = tab_onclick(tab_div);
 	}
 
+	// MUST be called before using getAllMarks()
+	// ALSO MUST do a setCursor(getCursor()) to clear selection, which also counts for some reason
+	let extra_mark_list = [];
+	function clear_extra_marks() {
+		const n = extra_mark_list.length;
+		for(let i = n-1; i >= 0; i--) {
+			extra_mark_list[i].clear();
+		}
+		extra_mark_list = [];
+	}
+
 	ipcRenderer.on("set", (event: any, message: any) => {
 		currentParse = BlocklyParse.parse(message);
 		editor.setValue(currentParse.dispLines.join("\n"));
@@ -256,6 +267,8 @@ window.onload = () => {
 	/*   Save the editor's contents  */
 
 	var get_save_callback = () => {
+		editor.setCursor(editor.getCursor("from"));
+		clear_extra_marks();
 		let marks = editor.getAllMarks();
 		let editorValue = editor.getValue().split("\n");
 		for(let i = 0; i < marks.length; ++i) {
@@ -468,6 +481,7 @@ window.onload = () => {
 		}
 
 		//  Compile and update the editor
+		editor.setCursor(editor.getCursor("from"));
 		error_popup_hide();
 		no_instance_popup_hide();
 		flashWindow("green");
@@ -477,6 +491,7 @@ window.onload = () => {
 		tab_block.textLines = rendered_text;
 		tab_block.dirty = true; tab_block.updateText();
 		//currentParse.updateTextLines();
+		clear_extra_marks();
 		let marks = editor.getAllMarks();
 		let place = marks[source_index].find();
 		editor.replaceRange(tab_block.dispLines.join("\n"), place.from, place.to);
@@ -493,29 +508,62 @@ window.onload = () => {
 		ipcRenderer.invoke("get-run", editor.getValue()).catch(console.error);
 	});
 
-	ipcRenderer.on("handle-error-run", (event: any, msg: string) => {
-		let mtch = msg.match(/Line ([0-9]+) column ([0-9]+)/g);
-		if(mtch !== null) {
-			let error = {
-				"y1": mtch[0],
-				"x1": mtch[1],
-				"y2": mtch[0],
-				"x2": mtch[1]+1	// todo fix
-			};
-			// todo: wrap this, it's dupe'd below
-			editor.setCursor(error.y1-1, error.x1 -1, {scroll: true});
-			console.log(error);
-			showAlert(error.msg);
-			editor.markText({ch: error.x1 - 1, line: error.y1-1}, {ch: error.x2, line: error.y1 -1}, {css: "background: red;"});
-		} else {
-			alert("Source code error, failed to compile. \nReason for failure:\n" + msg);
+	var compile_run_error_popup = document.getElementById("compile_run_error_popup");
+	var crepi = compile_run_error_popup.getElementsByClassName("compile_run_error_popup_inner")[0];
+	var curr_comp_run_err_popu = null;
+	function compile_run_error_popup_show(msg) {
+		crepi.innerHTML = msg;
+		compile_run_error_popup.classList.add("show");
+	};
+	function compile_run_error_popup_hide() {
+		crepi.innerHTML = "";
+		compile_run_error_popup.classList.remove("show");
+		if(curr_comp_run_err_popu) {
+			const nnn = extra_mark_list.indexOf(curr_comp_run_err_popu);
+			if(nnn != -1) {  extra_mark_list.splice(nnn, 1); }
+			curr_comp_run_err_popu.clear();
 		}
+	};
+	compile_run_error_popup.getElementsByClassName("popup_button")[0].addEventListener("click", compile_run_error_popup_hide);
+
+	ipcRenderer.on("handle-error-run", (event: any, msg: string) => {
+		let mtch = msg.match(/Line ([0-9]+) column ([0-9]+)/);
+		if(mtch !== null) {
+			let error = {"y1": mtch[1],"x1": mtch[2],"y2": mtch[1],"x2": parseInt(mtch[2])+1 }; //todo change
+			let lnln = parseInt(mtch[1]);
+
+			let i=0;
+			for(; i < currentParse.full_locations.length
+							&& currentParse.full_locations[i].s < lnln; ++i) {}
+			i-=1; let tbs = currentParse.full_locations[i];
+			let offs = lnln - (tbs.s + (tbs.b.fullLines.length - tbs.b.textLines.length));
+			let tln = currentParse.locations[tbs.lb].s + offs;
+			try {
+				editor.setCursor(tln, 0, {scroll: true});
+				const mmsg = msg.slice(msg.indexOf("\n")+1);
+				compile_run_error_popup_show(mmsg);
+				curr_comp_run_err_popu =
+					editor.markText(
+						{ch: 0, line: tln}, {ch: 1, line: tln+1},
+						{css: "background: red;"});
+				extra_mark_list.push(curr_comp_run_err_popu);
+
+				return;
+			} catch(e) {
+				console.log("ERROR:: " + e);
+			}
+		}
+		flashWindow("red");
+		alert("Source code error, failed to compile. \nReason for failure:\n" + msg);
 	});
 
 	ipcRenderer.on("handle-error-compile", (event: any, error: {msg: string, x1: number, x2: number, y1: number, y2: number}) => {
 		editor.setCursor(error.y1-1, error.x1 -1, {scroll: true});
 		showAlert(error.msg);
-		editor.markText({ch: error.x1 - 1, line: error.y1-1}, {ch: error.x2, line: error.y1 -1}, {css: "background: red;"});
+		extra_mark_list.push(
+			editor.markText(
+				{ch: error.x1 - 1, line: error.y1-1}, {ch: error.x2, line: error.y1 -1},
+				{css: "background: red;"}));
 	});
 
 	var no_instance_popup = document.getElementById("no_instance_popup");

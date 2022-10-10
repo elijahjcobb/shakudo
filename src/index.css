@@ -200,7 +200,7 @@ span.CodeMirror-selectedtext {
 
 
 
-.mid_popup {
+.mid_popup, .cid_popup {
   display: none;
   position: absolute;
   height: 25%;
@@ -213,11 +213,18 @@ span.CodeMirror-selectedtext {
   border-radius: 7px;
   border: 2px solid #000000;
   text-align: center;
+}
+.mid_popup {
   background: #ffcf33;
   color: blue;
 }
+.cid_popup {
+  width: 55%;
+  background: #ff6933;
+  color: #6933ff;
+}
 
-.mid_popup.show {
+.mid_popup.show, .cid_popup.show {
   display: block;
   animation: fadeIn 0.4s;
 }
@@ -280,7 +287,7 @@ span.CodeMirror-selectedtext {
   font-size: 0.75rem;
 }
 
-.popup button, .mid_popup button {
+.popup button, .mid_popup button, .cid_popup button {
   position: absolute;
   top: -12.5%;
   right: -12.5%;
