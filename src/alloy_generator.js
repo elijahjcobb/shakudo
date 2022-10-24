@@ -63,6 +63,10 @@ Alloy.init = function(workspace) {
   this.nameDB_.setVariableMap(workspace.getVariableMap());
   this.nameDB_.populateVariables(workspace);
   this.nameDB_.populateProcedures(workspace);  // idk what this does, exactly
+  console.log("AYYYY");
+  console.log(this.nameDB_);
+  console.log(workspace.getVariableMap());
+  console.log(this.nameDB_.getUserNames("VARIABLE"));
   this.isInitialized = true;
 };
 
@@ -83,6 +87,8 @@ Alloy.scrub_ = function(block, code, opt_thisOnly) {
   return code + nextCode;
 };
 
+// oh no
+Alloy._registered_var_names = [];
 
 // ---------------------------------------------------------
 
@@ -95,17 +101,75 @@ export function setupBlocks(): Blockly.Toolbox {
 
   // 'get' functions -- happen to overlap for the local, fixed, and pred types
   let get_func = function(block) {
-    var value = Alloy.nameDB_.getName(block.getFieldValue('VAR'), 'VARIABLE');  // assuming bars, not procedures, eh
+    var value = Alloy.nameDB_.getName(block.getFieldValue('VAR'), 'VARIABLE');  // assuming bars, not procedures, eh*/
     var code = value;
     return [code, 0];   // precedence goes here, later
   }
 
   // Add the user local variables getter block type
     // (currently, creating a different block type for each distinct 'type' of local var)
+  /*for(let var_type of creatable_var_types) {
+    upd_block_defs.push( create_var_def_func(var_type) );
+    Alloy['get_' + var_type] = get_func;
+  }//*/
+  /*console.log(Alloy._registered_var_names);
+  console.log(Alloy.nameDB_);
+  console.log(Alloy.nameDB_.variableMap_);
+  console.log(Alloy.nameDB_.variableMap_.getAllVariableNames());
+  console.log(Alloy.nameDB_.variableMap_.getAllVariables());
+  console.log(Alloy.nameDB_.variableMap_.getVariablesOfType('VARIABLE'));//*/
+  //let new_name = Eprompt({ title: "Choose new name:", label: "Rename variable to:", type: "input"}).then((name) => {return name;})
+  //prompt("Please enter a new variable name: ");
+  //let new_name = "aaa" + (Math.random());
+  //var Eprompt = require('electron-prompt');
+
   for(let var_type of creatable_var_types) {
     upd_block_defs.push( create_var_def_func(var_type) );
     Alloy['get_' + var_type] = get_func;
   }
+
+///*
+  function blahdah() {
+    var thisBlock = this;
+    this.getInput('DUMMY_INPUT').appendField(new Blockly.FieldDropdown(
+      function() {  // Menu Generator function
+        console.log(thisBlock.workspace.getAllVariables());
+        let options = [];
+        for(const el of thisBlock.workspace.getAllVariables()) {
+          options.push([el.name, el.getId()]);
+        }
+        options.push(["default", "default"]);
+        options.push(["Create new variable", "hjyuvtr_CREATE_VAR"]);
+        //options.push(["Rename this variable", "hjyuvtr_RENAME_VAR"])
+        return options;
+      },
+      function(newVal) {  // Validator function
+        thisBlock = this.getSourceBlock();
+        if(newVal == "hjyuvtr_CREATE_VAR") {
+          Blockly.dialog.prompt("Rename variable: ", "Rename variable: ", (new_name) => {
+            let res = thisBlock.workspace.createVariable(new_name, "bound_var");
+            thisBlock.getInput('DUMMY_INPUT').removeField("VAR");
+            blahdah.bind(thisBlock)();
+            const field_ref = thisBlock.getInput('DUMMY_INPUT').fieldRow[0];
+            console.log(field_ref);
+            field_ref.doValueUpdate_(res.getId());
+            field_ref.forceRerender();
+          });
+          //return new_name;
+          return undefined;
+        }
+        if(newVal == "hjyuvtr_RENAME_VAR") {
+          return "";
+        }
+        return newVal;
+      },
+
+    ), 'VAR');
+  };
+  Blockly.Extensions.register('gen_menu_ext', blahdah);
+  //*/
+
+
 
   // add the block type for fixed variables (not that any exist yet)
   for(let var_type of fixed_var_types) {
@@ -446,6 +510,8 @@ gen_inline_arg_pred_thing = (n, block_type) => {
   return thing;
 };
 
+
+/*
 create_var_def_func = (var_type) => { return {
   "type": "get_" + var_type,
   "message0": "%1",
@@ -460,7 +526,25 @@ create_var_def_func = (var_type) => { return {
   ],
   "output": "var",    // Null means the return value can be of any type
   "colour": "#a83275",
-}; };
+}; };//*/
+///*
+create_var_def_func = (var_type) => { return {
+  "type": "get_" + var_type,
+  "message0": "%1",
+  "args0": [
+    {    // Beginning of the field variable dropdown
+      "type": "input_dummy",
+      "name": "DUMMY_INPUT",    // Static name of the field
+      "variableTypes": [var_type],    // Specifies what types to put in the dropdown
+      "defaultType": var_type
+    }
+  ],
+  "output": "var",    // Null means the return value can be of any type
+  "colour": "#a83275",
+  "extensions": ["gen_menu_ext"]
+}; };//*/
+
+
 
 fixed_var_def_func = (var_type, type) => {
   return {
@@ -596,6 +680,19 @@ set_bin_op_def_func = (typetext, text) => { return {
   "tooltip": "",
   "helpUrl": ""
 };};
+
+/*
+base_block = (text) => { return {
+  "message0": `${text} | %1`,
+  "args0": [ {
+    "type": "input_statement",
+    "name": "statement",
+    "align": "RIGHT"
+  } ],
+  "nextStatement": null,
+  "colour": "#808080"
+};};
+*/
 
 
 // misc

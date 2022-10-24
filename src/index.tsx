@@ -342,11 +342,18 @@ window.onload = () => {
 		this.message = "Rebinding the same name is discouraged";
 	}
 	function descend_tree(parseBlock, block, bound_names) {
-		/*console.log("-------");
+		/*
+		console.log("-------");
 		console.log(" " + block + " ");
 		console.log(block);
 		console.log(bound_names);
-		console.log(block.type);//*/
+		console.log(block.type);
+		if(block.type.startsWith("get_")) {
+			console.log(block.getFieldValue('VAR'))
+		} else if(binding_blocks.includes(block.type)) {	// quantifiers, atm
+			console.log(block.getFieldValue('NAME'));
+		}
+		//*/
 		// check if names are bound in get_ blocks, add bound vars in quants
 		//let this_level = [];
 
