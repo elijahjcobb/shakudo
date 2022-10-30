@@ -63,10 +63,10 @@ Alloy.init = function(workspace) {
   this.nameDB_.setVariableMap(workspace.getVariableMap());
   this.nameDB_.populateVariables(workspace);
   this.nameDB_.populateProcedures(workspace);  // idk what this does, exactly
-  console.log("AYYYY");
+  /*console.log("AYYYY");
   console.log(this.nameDB_);
   console.log(workspace.getVariableMap());
-  console.log(this.nameDB_.getUserNames("VARIABLE"));
+  console.log(this.nameDB_.getUserNames("VARIABLE"));*/
   this.isInitialized = true;
 };
 
@@ -129,44 +129,60 @@ export function setupBlocks(): Blockly.Toolbox {
   }
 
 ///*
-  function blahdah() {
+  function _gen_menu_ext_func_updateBlock(blk, id) {
+    blk.getInput('DUMMY_INPUT').removeField("VAR");
+    gen_menu_ext_func.bind(blk)();
+    const field_ref = blk.getInput('DUMMY_INPUT').fieldRow[0];
+    field_ref.doValueUpdate_(id);
+    field_ref.forceRerender();
+  }
+
+  function gen_menu_ext_func() {
     var thisBlock = this;
     this.getInput('DUMMY_INPUT').appendField(new Blockly.FieldDropdown(
       function() {  // Menu Generator function
-        console.log(thisBlock.workspace.getAllVariables());
+        //console.log(thisBlock.workspace.getAllVariables());
         let options = [];
         for(const el of thisBlock.workspace.getAllVariables()) {
           options.push([el.name, el.getId()]);
         }
         options.push(["default", "default"]);
         options.push(["Create new variable", "hjyuvtr_CREATE_VAR"]);
-        //options.push(["Rename this variable", "hjyuvtr_RENAME_VAR"])
+        options.push(["Rename this variable", "hjyuvtr_RENAME_VAR"])
         return options;
       },
       function(newVal) {  // Validator function
         thisBlock = this.getSourceBlock();
+        console.log(thisBlock);
+
         if(newVal == "hjyuvtr_CREATE_VAR") {
-          Blockly.dialog.prompt("Rename variable: ", "Rename variable: ", (new_name) => {
+          Blockly.dialog.prompt("New variable name: ", "New variable name: ", (new_name) => {
             let res = thisBlock.workspace.createVariable(new_name, "bound_var");
-            thisBlock.getInput('DUMMY_INPUT').removeField("VAR");
-            blahdah.bind(thisBlock)();
-            const field_ref = thisBlock.getInput('DUMMY_INPUT').fieldRow[0];
-            console.log(field_ref);
-            field_ref.doValueUpdate_(res.getId());
-            field_ref.forceRerender();
+            _gen_menu_ext_func_updateBlock(thisBlock, res.getId());
           });
-          //return new_name;
+          return undefined;
+
+        } else if(newVal == "hjyuvtr_RENAME_VAR") {
+          let currentId = this.selectedOption_[1];
+          Blockly.dialog.prompt("Rename variable: ", "Rename variable: ", (new_name) => {
+            thisBlock.workspace.renameVariableById(currentId, new_name);
+            // look, there's no good option here, as far as I can tell.
+            let my_blks_bc_hacky = thisBlock.workspace.getBlocksByType("get_bound_var");
+            for(const blk of my_blks_bc_hacky) {
+              if(blk.getInput('DUMMY_INPUT').fieldRow[0].value_ === currentId || blk === thisBlock) {
+                _gen_menu_ext_func_updateBlock(blk, currentId);
+              }
+            }
+          });
           return undefined;
         }
-        if(newVal == "hjyuvtr_RENAME_VAR") {
-          return "";
-        }
+
         return newVal;
       },
 
     ), 'VAR');
   };
-  Blockly.Extensions.register('gen_menu_ext', blahdah);
+  Blockly.Extensions.register('gen_menu_ext', gen_menu_ext_func);
   //*/
 
 
