@@ -87,17 +87,24 @@ async function createWindow() {
 					}
 				},
 				{
-					label: "Run",
-					accelerator: "CmdOrCtrl+R",
+					label: "Run Current Tab",
+					accelerator: "CmdOrCtrl+L",
 					click: async () => {
 						win?.webContents.send("get-run");
 					}
 				},
 				{
 					label: "Compile Current Tab",
-					accelerator: "CmdOrCtrl+Shift+C",
+					accelerator: "CmdOrCtrl+K",
 					click: async () => {
 						win?.webContents.send("cmd-compile");
+					}
+				},
+				{
+					label: "Compile & Run Current Tab",
+					accelerator: "CmdOrCtrl+J",
+					click: async () => {
+						win?.webContents.send("cmd-run-and-compile");
 					}
 				},
 			]

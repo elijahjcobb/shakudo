@@ -447,7 +447,7 @@ window.onload = () => {
 		throw new Error("how did this happen");
 	};
 
-	ipcRenderer.on("cmd-compile", () => {
+	function _on_cmd_compile() {
 		const tab_div = shak_tabs_div.children.item(selected_index);
 		const tab_wrk = listBlocklyWorkplaces[selected_index].workspace;
 		const source_index = parseInt(tab_div.dataset.block_index);
@@ -502,7 +502,9 @@ window.onload = () => {
 		let marks = editor.getAllMarks();
 		let place = marks[source_index].find();
 		editor.replaceRange(tab_block.dispLines.join("\n"), place.from, place.to);
-	});
+		return "success"
+	}
+	ipcRenderer.on("cmd-compile", _on_cmd_compile);
 
 
 
@@ -510,7 +512,7 @@ window.onload = () => {
 
 	/* Misc */
 
-	ipcRenderer.on("get-run", () => {
+	function _on_get_run() {
 		// this should actually only be done on pane switch, but meh
 		const tab_div = shak_tabs_div.children.item(selected_index);
 		const tab_wrk = listBlocklyWorkplaces[selected_index].workspace;
@@ -528,7 +530,16 @@ window.onload = () => {
 		const outcontent = currentParse.dispLines.join("\n");
 		console.log(outcontent);
 		ipcRenderer.invoke("get-run", outcontent).catch(console.error);
-	});
+	}
+	ipcRenderer.on("get-run", _on_get_run);
+
+	function _on_cmd_run_and_compile() {
+		let res = _on_cmd_compile();
+		if(res === "success") {
+			_on_get_run();
+		}
+	}
+	ipcRenderer.on("cmd-run-and-compile", _on_cmd_run_and_compile);
 
 	var compile_run_error_popup = document.getElementById("compile_run_error_popup");
 	var crepi = compile_run_error_popup.getElementsByClassName("compile_run_error_popup_inner")[0];
