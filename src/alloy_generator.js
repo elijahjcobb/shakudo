@@ -116,7 +116,8 @@ export function setupBlocks(): Blockly.Toolbox {
   function _gen_menu_ext_func_updateBlock(blk, id) {
     blk.getInput('DUMMY_INPUT').removeField("VAR");
     gen_menu_ext_func.bind(blk)();
-    const field_ref = blk.getInput('DUMMY_INPUT').fieldRow[0];
+    const field_ref = blk.getInput('DUMMY_INPUT').fieldRow.filter( x => x instanceof Blockly.FieldDropdown)[0];
+    console.log(field_ref);
     field_ref.doValueUpdate_(id);
     field_ref.forceRerender();
   }
@@ -165,8 +166,11 @@ export function setupBlocks(): Blockly.Toolbox {
             _gen_menu_ext_func_updateBlock(thisBlock, res.getId());
 
             if(newVal == "hjyuvtr_RENAME_THIS_VAR") {
-              const my_blks_bc_hacky = thisBlock.workspace.getBlocksByType("get_bound_var");
-              if( my_blks_bc_hacky.filter( b => b.getInput('DUMMY_INPUT').fieldRow[0].value_ === currentId).length == 0
+              let my_blks_bc_hacky = thisBlock.workspace.getBlocksByType("get_bound_var");
+              for(const ql of quant_list) {
+                my_blks_bc_hacky = my_blks_bc_hacky.concat(thisBlock.workspace.getBlocksByType(ql));
+              }
+              if( my_blks_bc_hacky.filter( b => b.getInput('DUMMY_INPUT').fieldRow.filter( x => x instanceof Blockly.FieldDropdown)[0].value_ === currentId).length == 0
                   && thisBlock.workspace.getVariableUsesById(currentId).length == 0) {
                 thisBlock.workspace.deleteVariableById(currentId);
               }
@@ -185,8 +189,15 @@ export function setupBlocks(): Blockly.Toolbox {
 
             thisBlock.workspace.renameVariableById(currentId, new_name);
             let my_blks_bc_hacky = thisBlock.workspace.getBlocksByType("get_bound_var");
+            for(const ql of quant_list) {
+              my_blks_bc_hacky = my_blks_bc_hacky.concat(thisBlock.workspace.getBlocksByType(ql));
+            }
+            //console.log(my_blks_bc_hacky);
+            //console.log(thisBlock.workspace.getAllBlocks());
+            //console.log(thisBlock.workspace.getBlocksByType("all"));
             for(const blk of my_blks_bc_hacky) {
-              if(blk.getInput('DUMMY_INPUT').fieldRow[0].value_ === currentId || blk === thisBlock) {
+              const relevant_field = blk.getInput('DUMMY_INPUT').fieldRow.filter( x => x instanceof Blockly.FieldDropdown)[0];
+              if(relevant_field.value_ === currentId || blk === thisBlock) {
                 _gen_menu_ext_func_updateBlock(blk, currentId);
               }
             }
@@ -258,7 +269,7 @@ export function setupBlocks(): Blockly.Toolbox {
     Alloy[inp_str] = function(block) {
       var substatements = Alloy.statementToCode(block, 'statement');
       var source_set = Alloy.valueToCode(block, 'condition', 0) || " ";
-      var variable = Alloy.nameDB_.getName(block.getFieldValue('NAME'), 'VARIABLE');
+      var variable = Alloy.nameDB_.getName(block.getFieldValue('VAR'), 'VARIABLE');
 
       var code = inp_str + ' ' + variable + ': ' + source_set + ' {\n'
       + substatements;
@@ -599,9 +610,8 @@ quant_def_func = (text) => { return {
     "message0": `${text} %1 : %2 | %3`,
     "args0": [
       {
-        "type": "field_variable",
-        "name": "NAME",
-        "variable": "item",
+        "type": "input_dummy",
+        "name": "DUMMY_INPUT",
         "variableTypes": ["bound_var"],
         "defaultType": "bound_var"
       },
@@ -622,7 +632,8 @@ quant_def_func = (text) => { return {
     //"nextStatement": null,
     "colour": "#4033a1",
     "tooltip": "",
-    "helpUrl": ""
+    "helpUrl": "",
+    "extensions": ["gen_menu_ext"]  // menu to select variable
   }; };
 
 un_op_def_func = (text) => { return {

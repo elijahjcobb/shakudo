@@ -371,7 +371,7 @@ window.onload = () => {
 			return [[ get_fix_var_sig ]]; //ugh
 		}
 		if(binding_blocks.includes(block.type)) {	// quantifiers, atm
-			let bind_var = block.getFieldValue('NAME');
+			let bind_var = block.getFieldValue('VAR');
 			let bind_var_type = descend_tree(parseBlock,  block.getInputTargetBlock('condition'), bound_names);
 
 			if(bound_names.hasOwnProperty(bind_var)) throw new descend_tree_bounds__rebindException(block);
