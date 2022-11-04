@@ -344,7 +344,7 @@ export function setupBlocks(): Blockly.Toolbox {
         } else if(newVal == "hjyuvtr_RENAME_VAR") {
           let currentId = this.selectedOption_[1];
           Blockly.dialog.prompt("Rename variable: ", "Rename variable: ", (new_name) => {
-            if(! new_name) return; 
+            if(! new_name) return;
             new_name = new_name.toLowerCase();
 
             let exi = thisWrk.getVariable(new_name, "bound_var");
@@ -435,8 +435,8 @@ export function setupToolboxContents(block: ParseBlock) {
     toolbox["contents"] = toolbox["contents"].concat([
       {
         "kind": "button",
-        "text": "Create a local variable",
-        "callbackKey": "createVariableCallback_" + var_type
+        "text": "Delete Unused Variables",
+        "callbackKey": "clearExtraVariableCallback"
       },
       {
         "kind": "block",
@@ -483,12 +483,18 @@ export function setupToolboxContents(block: ParseBlock) {
  * Create button callbacks and other aspects of setting up each workspace
  */
 export function setupToolboxWorkspace(block: ParseBlock, workspace: Blockly.WorkspaceSvg) {
-  /*for(let var_type of creatable_var_types) {
-    workspace.registerButtonCallback("createVariableCallback_" + var_type, (button) => {
-      Blockly.Variables.createVariableButtonHandler(button.getTargetWorkspace(), null, var_type);
-    });
-  }*/
   workspace.extra_reserved_ = block.fixed_set_names.concat(Object.keys(block.fixed_predicates)).map(v => v.toLowerCase());
+  workspace.registerButtonCallback("clearExtraVariableCallback", (button) => {
+    let wrk = button.getTargetWorkspace();
+    let all_vars = wrk.getAllVariables();
+    let used_vars = Blockly.Variables.allUsedVarModels(wrk);
+    all_vars.filter(e => !used_vars.includes(e) ).forEach(e => {
+      wrk.deleteVariableById(e.getId());
+    });
+    if(wrk.getAllVariables().length == 0) {
+      wrk.createVariable("default", "bound_var");
+    }
+  });
 };
 
 
@@ -602,23 +608,7 @@ gen_inline_arg_pred_thing = (n, block_type) => {
 };
 
 
-/*
-create_var_def_func = (var_type) => { return {
-  "type": "get_" + var_type,
-  "message0": "%1",
-  "args0": [
-    {    // Beginning of the field variable dropdown
-      "type": "field_variable",
-      "name": "VAR",    // Static name of the field
-      "variable": "%{BKY_VARIABLES_DEFAULT_NAME}",    // Given at runtime
-      "variableTypes": [var_type],    // Specifies what types to put in the dropdown
-      "defaultType": var_type
-    }
-  ],
-  "output": "var",    // Null means the return value can be of any type
-  "colour": "#a83275",
-}; };//*/
-///*
+
 create_var_def_func = (var_type) => { return {
   "type": "get_" + var_type,
   "message0": "%1",
