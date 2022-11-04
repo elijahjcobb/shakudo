@@ -311,6 +311,7 @@ export function setupBlocks(): Blockly.Toolbox {
         if(newVal == "hjyuvtr_CREATE_VAR" || newVal == "hjyuvtr_RENAME_THIS_VAR") {
           let currentId = this.selectedOption_[1];
           Blockly.dialog.prompt("New variable name: ", "New variable name: ", (new_name) => {
+            if(! new_name) return;  //closed the tab
             new_name = new_name.toLowerCase();
 
             let exi = thisWrk.getVariable(new_name, "bound_var");
@@ -343,6 +344,7 @@ export function setupBlocks(): Blockly.Toolbox {
         } else if(newVal == "hjyuvtr_RENAME_VAR") {
           let currentId = this.selectedOption_[1];
           Blockly.dialog.prompt("Rename variable: ", "Rename variable: ", (new_name) => {
+            if(! new_name) return; 
             new_name = new_name.toLowerCase();
 
             let exi = thisWrk.getVariable(new_name, "bound_var");
