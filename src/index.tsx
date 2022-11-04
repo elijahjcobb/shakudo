@@ -143,6 +143,23 @@ window.onload = () => {
 			workspace: workspace,
 			block_index: block_index
 		});
+
+		/*
+		let hh_1 = workspace.newBlock("fixed_get_predef_set");
+		hh_1.setFieldValue("Persons", "VAR");
+		hh_1.initSvg(); hh_1.render();
+		let hh_2 = workspace.newBlock("all");
+		hh_2.initSvg(); hh_2.render();
+		hh_2.getInput("condition").connection.connect(hh_1.outputConnection);
+		let hh_3 = workspace.newBlock("fixed_pred_1");
+		hh_3.setFieldValue("testing", "VAR");
+		hh_3.initSvg(); hh_3.render();
+		hh_2.getInput("statement").connection.connect(hh_3.previousConnection);
+		let hh_4 = workspace.newBlock("get_bound_var");
+		//hh_4.setFieldValue("testing", "VAR");
+		hh_3.getInput("param_0").connection.connect(hh_4.outputConnection);
+		hh_4.initSvg(); hh_4.render();//*/
+
 	}
 
 	var _int_tab_onclick = function(tab_div) {
@@ -528,7 +545,7 @@ window.onload = () => {
 		get_save_callback();	// calls update text lines, among other things
 		//editor.getValue()
 		const outcontent = currentParse.dispLines.join("\n");
-		console.log(outcontent);
+		//console.log(outcontent);
 		ipcRenderer.invoke("get-run", outcontent).catch(console.error);
 	}
 	ipcRenderer.on("get-run", _on_get_run);
@@ -609,4 +626,5 @@ window.onload = () => {
 	});
 
 	setupAlert();
+
 };

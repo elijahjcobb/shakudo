@@ -61,12 +61,6 @@ Alloy.init = function(workspace) {
   if (!this.nameDB_) {    this.nameDB_ = new Blockly.Names(this.RESERVED_WORDS_);   }
   else {                  this.nameDB_.reset();   }
   this.nameDB_.setVariableMap(workspace.getVariableMap());
-  this.nameDB_.populateVariables(workspace);
-  this.nameDB_.populateProcedures(workspace);  // idk what this does, exactly
-  /*console.log("AYYYY");
-  console.log(this.nameDB_);
-  console.log(workspace.getVariableMap());
-  console.log(this.nameDB_.getUserNames("VARIABLE"));*/
   this.isInitialized = true;
 };
 
@@ -87,11 +81,17 @@ Alloy.scrub_ = function(block, code, opt_thisOnly) {
   return code + nextCode;
 };
 
-// oh no
-Alloy._registered_var_names = [];
-
 // ---------------------------------------------------------
 
+
+function stupid_debug(typ, block, code) {
+  console.log( typ + "  " + code);
+  console.log(block);
+  console.log(block.type);
+  console.log(Alloy.nameDB_.getUserNames('VARIABLE'));
+  console.log(block.getField('VAR').referencesVariables());
+  console.log("----------");
+}
 
 /**
  * Set up all the blocks, for each editable section.
@@ -99,133 +99,31 @@ Alloy._registered_var_names = [];
 export function setupBlocks(): Blockly.Toolbox {
   let upd_block_defs = [...block_defs];
 
+
   // 'get' functions -- happen to overlap for the local, fixed, and pred types
   let get_func = function(block) {
     var value = Alloy.nameDB_.getName(block.getFieldValue('VAR'), 'VARIABLE');  // assuming bars, not procedures, eh*/
     var code = value;
+    stupid_debug("get_func: ", block, code);
     return [code, 0];   // precedence goes here, later
   }
+
+  let fixed_get_func = (blk) => [ blk.getFieldValue('VAR'), 0];
 
 
   for(let var_type of creatable_var_types) {
     upd_block_defs.push( create_var_def_func(var_type) );
     Alloy['get_' + var_type] = get_func;
   }
-
-///*
-  function _gen_menu_ext_func_updateBlock(blk, id) {
-    blk.getInput('DUMMY_INPUT').removeField("VAR");
-    gen_menu_ext_func.bind(blk)();
-    const field_ref = blk.getInput('DUMMY_INPUT').fieldRow.filter( x => x instanceof Blockly.FieldDropdown)[0];
-    console.log(field_ref);
-    field_ref.doValueUpdate_(id);
-    field_ref.forceRerender();
-  }
-
-  function gen_menu_ext_func() {
-    var thisBlock = this;
-    this.getInput('DUMMY_INPUT').appendField(new Blockly.FieldDropdown(
-      function() {  // Menu Generator function
-        //console.log(thisBlock.workspace.getAllVariables());
-
-        if(thisBlock.workspace.getVariablesOfType("bound_var").length == 0) {
-          // create a default variable
-          thisBlock.workspace.createVariable("default", "bound_var");
-          // top of the list, so should be selected by default
-        }
-
-        let options = [];
-        for(const el of thisBlock.workspace.getAllVariables()) {
-          options.push([el.name, el.getId()]);
-        }
-        options.push(["----------------", "hjyuvtr_FAKE"])
-        options.push(["Create new variable", "hjyuvtr_CREATE_VAR"]);
-        options.push(["Rename just this to new name", "hjyuvtr_RENAME_THIS_VAR"]);
-        options.push(["Rename every such variable", "hjyuvtr_RENAME_VAR"]);
-        return options;
-      },
-      function(newVal) {  // Validator function
-        thisBlock = this.getSourceBlock();
-        console.log(thisBlock);
-
-        if(newVal == "hjyuvtr_CREATE_VAR" || newVal == "hjyuvtr_RENAME_THIS_VAR") {
-          let currentId = this.selectedOption_[1];
-          Blockly.dialog.prompt("New variable name: ", "New variable name: ", (new_name) => {
-
-            let exi = thisBlock.workspace.getVariable(new_name, "bound_var");
-            if(exi !== null) {
-              if(newVal == "hjyuvtr_CREATE_VAR") {
-                Blockly.dialog.alert("Sorry, can't create a new name -- because that name already exists!");
-              } else {
-                Blockly.dialog.alert("That name already exists -- you can just select it from the list!");
-              }
-              return;
-            }
-
-            let res = thisBlock.workspace.createVariable(new_name, "bound_var");
-            _gen_menu_ext_func_updateBlock(thisBlock, res.getId());
-
-            if(newVal == "hjyuvtr_RENAME_THIS_VAR") {
-              let my_blks_bc_hacky = thisBlock.workspace.getBlocksByType("get_bound_var");
-              for(const ql of quant_list) {
-                my_blks_bc_hacky = my_blks_bc_hacky.concat(thisBlock.workspace.getBlocksByType(ql));
-              }
-              if( my_blks_bc_hacky.filter( b => b.getInput('DUMMY_INPUT').fieldRow.filter( x => x instanceof Blockly.FieldDropdown)[0].value_ === currentId).length == 0
-                  && thisBlock.workspace.getVariableUsesById(currentId).length == 0) {
-                thisBlock.workspace.deleteVariableById(currentId);
-              }
-            }
-          });
-          return null;
-
-        } else if(newVal == "hjyuvtr_RENAME_VAR") {
-          let currentId = this.selectedOption_[1];
-          Blockly.dialog.prompt("Rename variable: ", "Rename variable: ", (new_name) => {
-            let exi = thisBlock.workspace.getVariable(new_name, "bound_var");
-            if(exi !== null) {
-              Blockly.dialog.alert("Sorry, can't rename to that name -- because that name already exists!");
-              return;
-            }
-
-            thisBlock.workspace.renameVariableById(currentId, new_name);
-            let my_blks_bc_hacky = thisBlock.workspace.getBlocksByType("get_bound_var");
-            for(const ql of quant_list) {
-              my_blks_bc_hacky = my_blks_bc_hacky.concat(thisBlock.workspace.getBlocksByType(ql));
-            }
-            //console.log(my_blks_bc_hacky);
-            //console.log(thisBlock.workspace.getAllBlocks());
-            //console.log(thisBlock.workspace.getBlocksByType("all"));
-            for(const blk of my_blks_bc_hacky) {
-              const relevant_field = blk.getInput('DUMMY_INPUT').fieldRow.filter( x => x instanceof Blockly.FieldDropdown)[0];
-              if(relevant_field.value_ === currentId || blk === thisBlock) {
-                _gen_menu_ext_func_updateBlock(blk, currentId);
-              }
-            }
-          });
-          return null;
-        } else if(newVal == "hjyuvtr_FAKE") {
-          return null;
-        }
-        return newVal;
-      },
-
-    ), 'VAR');
-  };
-  Blockly.Extensions.register('gen_menu_ext', gen_menu_ext_func);
-  //*/
-
-
-
   // add the block type for fixed variables (not that any exist yet)
   for(let var_type of fixed_var_types) {
     upd_block_defs.push( fixed_var_def_func(var_type, "var") );
-    Alloy['fixed_get_' + var_type] = get_func;
+    Alloy['fixed_get_' + var_type] = fixed_get_func;
   }
-
   // add the block type for fixed sets (eg sigs)
   for(let var_type of fixed_set_types) {
     upd_block_defs.push( fixed_var_def_func(var_type, "set") );
-    Alloy['fixed_get_' + var_type] = get_func;
+    Alloy['fixed_get_' + var_type] = fixed_get_func;
   }
 
   // add the block for fixed predicates
@@ -237,6 +135,8 @@ export function setupBlocks(): Blockly.Toolbox {
   function pred_resp_function(n) {
     return function(block) {
       let code = Alloy.nameDB_.getName(block.getFieldValue('VAR'), 'VARIABLE') + "[";
+
+      stupid_debug("pred: ", block, code);
 
       let inputList = [];
       for(let i = 0; i < n; ++i) {
@@ -267,6 +167,8 @@ export function setupBlocks(): Blockly.Toolbox {
   // formula quantifiers, aka that evaluate to a boolean, eg all k: Kitteh | pred(k)
   function quant_func(inp_str) {
     Alloy[inp_str] = function(block) {
+      stupid_debug("quant_func: ", block, "<undet yet>" );
+
       var substatements = Alloy.statementToCode(block, 'statement');
       var source_set = Alloy.valueToCode(block, 'condition', 0) || " ";
       var variable = Alloy.nameDB_.getName(block.getFieldValue('VAR'), 'VARIABLE');
@@ -342,6 +244,147 @@ export function setupBlocks(): Blockly.Toolbox {
 
 	Blockly.defineBlocksWithJsonArray(upd_block_defs);
 };
+
+
+
+
+
+  /* The following is the code that generates the dropdown menu
+      on bound_var selectors and quantifiers */
+
+
+  // update a block whose selected value is set to a modified variable
+  function _gen_menu_ext_func_updateBlock(blk, id) {
+    blk.getInput('DUMMY_INPUT').removeField("VAR");
+    gen_menu_ext_func.bind(blk)();
+    const field_ref = blk.getField("VAR");
+    //blk.getInput('DUMMY_INPUT').fieldRow.filter( x => x instanceof Blockly.FieldDropdown)[0];
+    field_ref.doValueUpdate_(id);
+    field_ref.forceRerender();
+  }
+
+  // get the hacky field given the block. may need to be changed for other blks
+  function _gen_menu__get_field(b) {
+    return b.getInput('DUMMY_INPUT').fieldRow.filter( x => x instanceof Blockly.FieldDropdown)[0];
+  }
+
+  // get stuff with the custom menus, because wrksp.getVariableUsesById won't pick them up
+  function _gen_menu__hacky_fielded(wrk) {
+    let my_blks_bc_hacky = wrk.getBlocksByType("get_bound_var");
+    for(const ql of quant_list) {
+      my_blks_bc_hacky = my_blks_bc_hacky.concat(wrk.getBlocksByType(ql));
+    }
+    return my_blks_bc_hacky;
+  }
+
+  // get the set of our custom blocks with the given value selected
+  function _gen_menu__hacky_fielded_filter(wrk, id) {
+    return _gen_menu__hacky_fielded(wrk).filter( b => _gen_menu__get_field(b).value_ === id);
+  }
+
+  function gen_menu_ext_func() {
+    let thisBlk = this;
+    let thisWrk = thisBlk.workspace;
+    let new_field = new Blockly.FieldDropdown(
+      // Menu Generator function
+      function() {
+        if(thisWrk.getVariablesOfType("bound_var").length == 0) {
+          // create a default variable
+          // top of the list, so should be selected by default
+          thisWrk.createVariable("default", "bound_var");
+        }
+
+        let options = [];
+        for(const el of thisWrk.getVariablesOfType("bound_var")) {
+          options.push([el.name, el.getId()]);
+        }
+        options.push(["----------------", "hjyuvtr_FAKE"])
+        options.push(["Create new variable", "hjyuvtr_CREATE_VAR"]);
+        options.push(["Rename just this to new name", "hjyuvtr_RENAME_THIS_VAR"]);
+        options.push(["Rename every such variable", "hjyuvtr_RENAME_VAR"]);
+        return options;
+      },
+
+      // Validator function
+      function(newVal) {
+        //let thisBlk = this.getSourceBlock();
+        if(newVal == "hjyuvtr_CREATE_VAR" || newVal == "hjyuvtr_RENAME_THIS_VAR") {
+          let currentId = this.selectedOption_[1];
+          Blockly.dialog.prompt("New variable name: ", "New variable name: ", (new_name) => {
+            new_name = new_name.toLowerCase();
+
+            let exi = thisWrk.getVariable(new_name, "bound_var");
+            if(exi !== null) {
+              if(newVal == "hjyuvtr_CREATE_VAR") {
+                Blockly.dialog.alert("Sorry, can't create a new name -- because that name already exists!");
+              } else {
+                Blockly.dialog.alert("That name already exists -- you can just select it from the list!");
+              }
+              return;
+            }
+
+            const extra_reserved = ("extra_reserved_" in thisWrk) ? thisWrk.extra_reserved_ : [];
+            if(extra_reserved.indexOf(new_name) > -1) {
+              Blockly.dialog.alert("Sorry, that name is already defined by your instructor.");
+              return;
+            }
+
+            let res = thisWrk.createVariable(new_name, "bound_var");
+            _gen_menu_ext_func_updateBlock(thisBlk, res.getId());
+
+            if(newVal == "hjyuvtr_RENAME_THIS_VAR") {
+              if( _gen_menu__hacky_fielded_filter(thisWrk, currentId).length == 0) {
+                thisWrk.deleteVariableById(currentId);
+              }
+            }
+          });
+          return null;
+
+        } else if(newVal == "hjyuvtr_RENAME_VAR") {
+          let currentId = this.selectedOption_[1];
+          Blockly.dialog.prompt("Rename variable: ", "Rename variable: ", (new_name) => {
+            new_name = new_name.toLowerCase();
+
+            let exi = thisWrk.getVariable(new_name, "bound_var");
+            if(exi !== null) {
+              Blockly.dialog.alert("Sorry, can't rename to that name -- because that name already exists!");
+              return;
+            }
+
+            const extra_reserved = ("extra_reserved_" in thisWrk) ? thisWrk.extra_reserved_ : [];
+            if(extra_reserved.indexOf(new_name) > -1) {
+              Blockly.dialog.alert("Sorry, that name is already defined by your instructor.");
+              return;
+            }
+
+            thisWrk.renameVariableById(currentId, new_name); //*
+            _gen_menu_ext_func_updateBlock(thisBlk, currentId);
+            for(const blk of _gen_menu__hacky_fielded_filter(thisWrk, currentId)) {
+              _gen_menu_ext_func_updateBlock(blk, currentId);
+            }//*/
+          });
+          return null;
+
+        } else if(newVal == "hjyuvtr_FAKE") {
+          return null;
+        }
+
+        return newVal;
+      },
+    );
+    new_field.referencesVariables = () => true;
+    new_field.refreshVariableName = () => {
+      this.getInput('DUMMY_INPUT').removeField("VAR");
+      gen_menu_ext_func.bind(this)();
+      this.getField("VAR").forceRerender();
+      return;
+    };
+    this.getInput('DUMMY_INPUT').appendField(new_field, 'VAR');
+  };
+  Blockly.Extensions.register('gen_menu_ext', gen_menu_ext_func);
+  //*/
+
+
 
 
 // ---------------------------------------------------------
@@ -438,11 +481,12 @@ export function setupToolboxContents(block: ParseBlock) {
  * Create button callbacks and other aspects of setting up each workspace
  */
 export function setupToolboxWorkspace(block: ParseBlock, workspace: Blockly.WorkspaceSvg) {
-  for(let var_type of creatable_var_types) {
+  /*for(let var_type of creatable_var_types) {
     workspace.registerButtonCallback("createVariableCallback_" + var_type, (button) => {
       Blockly.Variables.createVariableButtonHandler(button.getTargetWorkspace(), null, var_type);
     });
-  }
+  }*/
+  workspace.extra_reserved_ = block.fixed_set_names.concat(Object.keys(block.fixed_predicates)).map(v => v.toLowerCase());
 };
 
 
