@@ -244,7 +244,6 @@ export function setupBlocks(): Blockly.Toolbox {
   }
   set_bin_op_list.forEach( set_bin_op_func ); // currently the same function
 
-  console.log(upd_block_defs);
 	Blockly.defineBlocksWithJsonArray(upd_block_defs);
 };
 
@@ -430,6 +429,34 @@ export function setupToolboxContents(block: ParseBlock) {
     //"data": JSON.stringify(value)     // using this here to track types
   }; }));
 
+  let fix_thing = function(block_type) {
+    let former_init = Blockly.Blocks[block_type].init;
+    Blockly.Blocks[block_type].init = function() {
+      var thisBlk = this;
+      former_init.bind(thisBlk)();
+      console.log(thisBlk);
+      console.log(block.fixed_predicates);
+      this.setTooltip(function() {
+        let key = thisBlk.getFieldValue("VAR");
+        let res = block.fixed_predicates_descs[key] + "\n-- Input types: --";
+        let i = 1;
+        for(const type of block.fixed_predicates[key]) {
+          res += `\nInput ${i} :  ${type}`;
+          i += 1;
+        }
+        return res.trim();
+      });
+    };//*/
+  };
+  for(let n = 0; n <= 2; ++n) {
+    let block_type = `fixed_pred_inline_${n}`;
+    fix_thing(block_type);
+  }
+  for(let n = 0; n <= 10; ++n) {
+    let block_type = `fixed_pred_${n}`;
+    fix_thing(block_type);
+  }
+
 
   toolbox["contents"].push(...[ {"kind": "label", "text": "User Local Variables:", "web-class": "toolbox_style", } ]);
   for(let var_type of creatable_var_types) {
@@ -473,7 +500,6 @@ export function setupToolboxContents(block: ParseBlock) {
 
   // misc... none as of this comment
   generic_concat(block_defs);
-
   return toolbox;
 };
 

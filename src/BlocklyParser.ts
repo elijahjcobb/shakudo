@@ -43,6 +43,7 @@ export class ParseBlock {
   public fixed_set_names: string[] = [];
   public fixed_predicates: string[] = []; // !!!!!TODO this is actually just the wrong type wtf sam
   public fixed_predicates_inline: boolean[] = []; // TODO do this better
+  public fixed_predicates_descs: string[] = []; // ^
   protected macro_lookup_func: (name: string) => (ParseBlock|null) = (name) => null; // passed in
 
   public run_edit_blk: string|null = null;  // for RUN, to modify output based on key
@@ -89,9 +90,17 @@ export class ParseBlock {
         for(const vn of splitter){
           this.fixed_set_names.push(vn);
         }
-      } else if(shak_line === "define_pred" || shak_line === "define_pred_inline") {
-        this.fixed_predicates[ splitter[0] ] = splitter.slice(1);
-        this.fixed_predicates_inline[ splitter[0] ] = (shak_line === "define_pred_inline");
+      } else if(["define_pred", "define_pred_inline", "define_pred_desc", "define_pred_desc_inline"].includes(shak_line)) {
+        if(["define_pred", "define_pred_inline"].includes(shak_line)) {
+          this.fixed_predicates[ splitter[0] ] = splitter.slice(1);
+          this.fixed_predicates_descs[ splitter[0] ] = "";
+        } else {
+          let desc = line.match(/\"[^\"]*\"/g)[0];
+          let new_splitter = BlocklyParse.lineSplitterFunc(line + " ", desc);
+          this.fixed_predicates[ splitter[0] ] = new_splitter;
+          this.fixed_predicates_descs[ splitter[0] ] = desc;//desc.substring(1, desc.length-1);
+        }
+        this.fixed_predicates_inline[ splitter[0] ] = ["define_pred_inline", "define_pred_desc_inline"].includes(shak_line);
       } else if(shak_line === "allow_multiple") {
         this.allow_multiple = true;
       } else if(shak_line === "repl_cmd") {
@@ -103,6 +112,7 @@ export class ParseBlock {
           this.fixed_set_names.push(...Object.values(macroBlk.fixed_set_names));
           // oh my god update the type above, these are knockoff-dicts, not arrays
           Object.entries(macroBlk.fixed_predicates).forEach((k,v) => { this.fixed_predicates[k[0]] = k[1]; });
+          Object.entries(macroBlk.fixed_predicates_descs).forEach((k,v) => { this.fixed_predicates_descs[k[0]] = k[1]; });
           Object.entries(macroBlk.fixed_predicates_inline).forEach((k,v) => { this.fixed_predicates_inline[k[0]] = k[1];});
           // a little awkward these are copied but blocklines aren't, but ah well
           Object.assign(this.run_cmds, macroBlk.run_cmds);
@@ -283,7 +293,7 @@ export class BlocklyParse {
     return line.split(shak_line + " ")[1]?.split(" ").map(l=>l.trim()).filter(e=>e.toString());
   }
 
-  static shakudo_comments = [ "edit", "text", "manual", "comment", "define_sig", "define_pred", "define_pred_inline", "allow_multiple", "run", "repl_cmd", "include_macro_block" ];
+  static shakudo_comments = [ "edit", "text", "manual", "comment", "define_sig", "define_pred", "define_pred_inline", "allow_multiple", "run", "repl_cmd", "include_macro_block", "define_pred_desc", "define_pred_desc_inline" ];
   static shakudo_comments_blockers = {  // as in "starts a block"
     "edit": OParseBlockType.EDIT,
     "text": OParseBlockType.TEXT,
