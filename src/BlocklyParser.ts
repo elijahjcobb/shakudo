@@ -14,6 +14,7 @@ export const OParseBlockType = {
   NULL: 3,    // unused at the moment
   MANL: 4,    // manual: editable text, without a corresponding Blockly pane
   RUN: 5,     // uneditable, disp; contains text that changes based on pane
+  MCC: 6      // macro: solely blockly cmds, to be copied into other blks
 } as const;
 type ParseBlockType = typeof OParseBlockType[keyof typeof OParseBlockType];
 const reverseOParseBlockType = Object.values(OParseBlockType);
@@ -40,10 +41,11 @@ export class ParseBlock {
   public textLines: string[] = [];
 
   public fixed_set_names: string[] = [];
-  public fixed_predicates: string[] = [];
+  public fixed_predicates: string[] = []; // !!!!!TODO this is actually just the wrong type wtf sam
   public fixed_predicates_inline: boolean[] = []; // TODO do this better
+  protected macro_lookup_func: (name: string) => (ParseBlock|null) = (name) => null; // passed in
 
-  public run_edit_blk: string|null = null;
+  public run_edit_blk: string|null = null;  // for RUN, to modify output based on key
   public run_cmds: { string: string } = {};
 
   public constructor(input) {
@@ -82,21 +84,31 @@ export class ParseBlock {
 
     for(const line of this.blockLines) {
       let shak_line = BlocklyParse.extractShakudoComment(line);
+      let splitter = BlocklyParse.lineSplitterFunc(line, shak_line);
       if(shak_line === "define_sig") {
-        let var_names = line.split("define_sig ")[1].split(" ").map(l=>l.trim()).filter(e=>e.toString());
-        for(const vn of var_names){
+        for(const vn of splitter){
           this.fixed_set_names.push(vn);
         }
       } else if(shak_line === "define_pred" || shak_line === "define_pred_inline") {
-        let splitter = line.split(shak_line + " ")[1].split(" ").map(l=>l.trim()).filter(e=>e.toString());
         this.fixed_predicates[ splitter[0] ] = splitter.slice(1);
         this.fixed_predicates_inline[ splitter[0] ] = (shak_line === "define_pred_inline");
       } else if(shak_line === "allow_multiple") {
         this.allow_multiple = true;
       } else if(shak_line === "repl_cmd") {
         // does this actually need to be limited to 'run panes', or could they be global/global-ish? editable?
-        let splitter = line.split(shak_line + " ")[1].split(" ").map(l=>l.trim()).filter(e=>e.toString());
         this.run_cmds[ splitter[0] ] = splitter[1];
+      } else if(shak_line == "include_macro_block") {
+        for(const name of splitter) {
+          let macroBlk = this.macro_lookup_func(name);
+          this.fixed_set_names.push(...Object.values(macroBlk.fixed_set_names));
+          // oh my god update the type above, these are knockoff-dicts, not arrays
+          Object.entries(macroBlk.fixed_predicates).forEach((k,v) => { this.fixed_predicates[k[0]] = k[1]; });
+          Object.entries(macroBlk.fixed_predicates_inline).forEach((k,v) => { this.fixed_predicates_inline[k[0]] = k[1];});
+          // a little awkward these are copied but blocklines aren't, but ah well
+          Object.assign(this.run_cmds, macroBlk.run_cmds);
+          // we're not really using this anymore, but ah well
+          this.allow_multiple = macroBlk.allow_multiple;
+        }
       }
     }
 
@@ -104,7 +116,7 @@ export class ParseBlock {
     // eslint-disable-next-line
     for(const [pred, types] of this.fixed_predicates.entries()) {
       for(const typo of types) {
-        console.assert(this.fixed_set_names.contains(typo), "Predicate requires types that aren't declared in this block");
+        console.assert(this.fixed_set_names.includes(typo), "Predicate requires types that aren't declared in this block");
       }
     }
   }
@@ -116,16 +128,10 @@ export class ParseBlock {
       this.fullLines = [ this.typeLine ].concat(this.blockLines, this.dispLines);
       if(this.run_edit_blk) {
         // todo: later, somehow, allow for interweaving w text n such. maybe even in edit blocks etc?
-        console.log(this.run_edit_blk);
-        console.log(this.run_cmds);
         const here_entries = Object.keys(this.run_cmds).filter( (key)=>(key===this.run_edit_blk) ).map(key=>this.run_cmds[key]);
-        console.log(here_entries);
-        console.log(this.dispLines);
         for(const he of here_entries) {
-          console.log(he);
           this.dispLines.push(this.run_cmds[he]);
         }
-        console.log(this.dispLines);
       }
       if(this.typeLine === "") this.fullLines.shift();
       this.dirty = false;
@@ -139,7 +145,6 @@ export class ParseBlock {
  *  It's basically just a linked list of ParseBlocks above
  */
 export class BlocklyParse {
-
 
   public firstBlock: ParseBlock;
   public dispLines: string[] = [];
@@ -179,18 +184,27 @@ export class BlocklyParse {
     }
 
     let runners = [];
+    let macro_lookup = {};
+    let macro_lookup_func = (name) => { return macro_lookup[name]; };
 		for (const line of lines) {
       shak_line = BlocklyParse.extractShakudoComment(line);
       if(shak_line === null) {
         currBlock.textLines.push(line);
+        console.assert(currBlock.type !== OParseBlockType.MCC, "Malformed input: macro blocks should only include Shakudo comments");
       } else if( !(shak_line in BlocklyParse.shakudo_comments_blockers)) {
         currBlock.blockLines.push(line);
       } else {
         currBlock.parse();
+        if(currBlock.title) {
+          macro_lookup[currBlock.title] = currBlock;
+        }
+
         let newBlock = new ParseBlock(line);
+        newBlock.macro_lookup_func = macro_lookup_func;
         currBlock.next = newBlock;
         newBlock.prev = currBlock;
         currBlock = newBlock;
+
         if(shak_line === "run") {
           runners.push(newBlock);
         }
@@ -265,12 +279,17 @@ export class BlocklyParse {
     return null;
   };
 
-  static shakudo_comments = [ "edit", "text", "manual", "comment", "define_sig", "define_pred", "define_pred_inline", "allow_multiple", "run", "repl_cmd" ];
+  public static lineSplitterFunc(line: string, shak_line: string): string[] {
+    return line.split(shak_line + " ")[1]?.split(" ").map(l=>l.trim()).filter(e=>e.toString());
+  }
+
+  static shakudo_comments = [ "edit", "text", "manual", "comment", "define_sig", "define_pred", "define_pred_inline", "allow_multiple", "run", "repl_cmd", "include_macro_block" ];
   static shakudo_comments_blockers = {  // as in "starts a block"
     "edit": OParseBlockType.EDIT,
     "text": OParseBlockType.TEXT,
     "manual": OParseBlockType.MANL,
-    "run": OParseBlockType.RUN
+    "run": OParseBlockType.RUN,
+    "macro": OParseBlockType.MCC
   };
 
 };
