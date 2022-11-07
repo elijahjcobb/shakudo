@@ -44,7 +44,7 @@ export var expr_types = [ "statement_expr" ];
 
 
 // for the sake of checking if vars are bound
-export var binding_blocks = quant_list;
+export var binding_blocks =  ["quant_blk"];   // quant_list;
 export var set_op_blocks = set_bin_op_list;
 
 // ---------------------------------------------------------
@@ -166,22 +166,24 @@ export function setupBlocks(): Blockly.Toolbox {
 
   // formula quantifiers, aka that evaluate to a boolean, eg all k: Kitteh | pred(k)
   function quant_func(inp_str) {
-    Alloy[inp_str] = function(block) {
+    Alloy["quant_blk"] = function(block) {
       stupid_debug("quant_func: ", block, "<undet yet>" );
 
       var substatements = Alloy.statementToCode(block, 'statement');
       var source_set = Alloy.valueToCode(block, 'condition', 0) || " ";
       var variable = Alloy.nameDB_.getName(block.getFieldValue('VAR'), 'VARIABLE');
+      var quant_type = block.getFieldValue('quant_type_dropdown');
 
-      var code = inp_str + ' ' + variable + ': ' + source_set + ' {\n'
+      var code = quant_type + ' ' + variable + ': ' + source_set + ' {\n'
       + substatements;
       if(substatements[substatements.length - 1] !== "\n") code += "\n";
       code += "}";
       return code ;//+ "\n";
     };
-    upd_block_defs.push(quant_def_func(inp_str));
+    upd_block_defs.push(quant_def_func(""));  //inp_str
   };
-  quant_list.forEach( quant_func );
+  //quant_list.forEach( quant_func );
+  quant_func("")
 
 
   // wrap in parens if it has children... overnethusiastic but should be
@@ -242,10 +244,9 @@ export function setupBlocks(): Blockly.Toolbox {
   }
   set_bin_op_list.forEach( set_bin_op_func ); // currently the same function
 
+  console.log(upd_block_defs);
 	Blockly.defineBlocksWithJsonArray(upd_block_defs);
 };
-
-
 
 
 
@@ -459,7 +460,8 @@ export function setupToolboxContents(block: ParseBlock) {
   };
 
   toolbox["contents"].push(...[ {"kind": "label", "text": "Quantified Expressions:", "web-class": "toolbox_style", } ]);
-  generic_concat(quant_list);
+  //generic_concat(quant_list);
+  toolbox["contents"].push(generic_map_func("quant_blk"));
 
   toolbox["contents"].push(...[ {"kind": "label", "text": "Boolean-Valued Operators", "web-class": "toolbox_style", } ]);
   generic_concat(bin_op_list);
@@ -642,8 +644,8 @@ fixed_var_def_func = (var_type, type) => {
 
 
 quant_def_func = (text) => { return {
-    "type": text,
-    "message0": `${text} %1 : %2 | %3`,
+    "type": "quant_blk",
+    "message0": `%4 %1 : %2 | %3`,
     "args0": [
       {
         "type": "input_dummy",
@@ -661,7 +663,12 @@ quant_def_func = (text) => { return {
         "name": "statement",
       //  "check": "Boolean",
         "align": "RIGHT"
-      }
+      },
+      {
+        "type": "field_dropdown",
+        "name": "quant_type_dropdown",
+        "options": quant_list.map(x => [x,x])
+      },
     ],
     "inputsInline": true,
     "previousStatement": null,
