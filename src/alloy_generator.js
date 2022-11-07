@@ -278,9 +278,8 @@ export function setupBlocks(): Blockly.Toolbox {
   // get stuff with the custom menus, because wrksp.getVariableUsesById won't pick them up
   function _gen_menu__hacky_fielded(wrk) {
     let my_blks_bc_hacky = wrk.getBlocksByType("get_bound_var");
-    for(const ql of quant_list) {
-      my_blks_bc_hacky = my_blks_bc_hacky.concat(wrk.getBlocksByType(ql));
-    }
+    //for(const ql of quant_list) { my_blks_bc_hacky = my_blks_bc_hacky.concat(wrk.getBlocksByType(ql)); }
+    my_blks_bc_hacky = my_blks_bc_hacky.concat(wrk.getBlocksByType("quant_blk"));
     return my_blks_bc_hacky;
   }
 
