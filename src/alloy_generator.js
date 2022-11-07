@@ -258,14 +258,21 @@ export function setupBlocks(): Blockly.Toolbox {
     blk.getInput('DUMMY_INPUT').removeField("VAR");
     gen_menu_ext_func.bind(blk)();
     const field_ref = blk.getField("VAR");
+    console.log("----------")
+    console.log(blk);
+    console.log(id);
+    console.log(blk.workspace.getVariableById(id))
+    console.log(field_ref)
     //blk.getInput('DUMMY_INPUT').fieldRow.filter( x => x instanceof Blockly.FieldDropdown)[0];
     field_ref.doValueUpdate_(id);
+    console.log(field_ref)
     field_ref.forceRerender();
   }
 
   // get the hacky field given the block. may need to be changed for other blks
   function _gen_menu__get_field(b) {
-    return b.getInput('DUMMY_INPUT').fieldRow.filter( x => x instanceof Blockly.FieldDropdown)[0];
+    return b.getField("VAR");
+    //return b.getInput('DUMMY_INPUT').fieldRow.filter( x => x instanceof Blockly.FieldDropdown)[0];
   }
 
   // get stuff with the custom menus, because wrksp.getVariableUsesById won't pick them up
@@ -359,9 +366,10 @@ export function setupBlocks(): Blockly.Toolbox {
               return;
             }
 
+            let lllist = _gen_menu__hacky_fielded_filter(thisWrk, currentId);
             thisWrk.renameVariableById(currentId, new_name); //*
             _gen_menu_ext_func_updateBlock(thisBlk, currentId);
-            for(const blk of _gen_menu__hacky_fielded_filter(thisWrk, currentId)) {
+            for(const blk of lllist) {
               _gen_menu_ext_func_updateBlock(blk, currentId);
             }//*/
           });
@@ -434,8 +442,6 @@ export function setupToolboxContents(block: ParseBlock) {
     Blockly.Blocks[block_type].init = function() {
       var thisBlk = this;
       former_init.bind(thisBlk)();
-      console.log(thisBlk);
-      console.log(block.fixed_predicates);
       this.setTooltip(function() {
         let key = thisBlk.getFieldValue("VAR");
         let res = block.fixed_predicates_descs[key] + "\n-- Input types: --";
