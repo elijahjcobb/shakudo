@@ -8,11 +8,11 @@ var gen_pred_thing, gen_inline_arg_pred_thing;
 var fixed_var_def_func, create_var_def_func, quant_def_func, un_op_def_func, bin_op_def_func, compare_op_def_func, set_bin_op_def_func;
 
 // function implementations in setupBlocks
-export var quant_list  = ["all", "some", "one", "lone", "no"];
-export var un_op_list  = ["not"];
-export var bin_op_list = ["and", "or", "implies", "iff"];
-export var compare_op_list = ["=", "!="];  // todo: human-friendly words (dict?)
-export var set_bin_op_list = [ "-", ["+", "union"], ["&", "intersect"] ]
+export var quant_list  = ["all", "some", "one", "lone", "no"];  // BLK NAME: quant_blk
+export var un_op_list  = ["not"]; // BLK NAME: bool_un_op_blk
+export var bin_op_list = ["and", "or", "implies", "iff"]; // BLK NAME: bool_bin_op_blk
+export var compare_op_list = ["=", "!="];  // BLK NAME: var_bin_op_blk,  // todo: human-friendly words (dict?)
+export var set_bin_op_list = [ ["+", "union"], ["&", "intersect"], "-" ] // BLK NAME: set_bin_op_blk
 
 // misc
 var op_internal_translate;
@@ -165,7 +165,7 @@ export function setupBlocks(): Blockly.Toolbox {
   }
 
   // formula quantifiers, aka that evaluate to a boolean, eg all k: Kitteh | pred(k)
-  function quant_func(inp_str) {
+  function quant_func() {
     Alloy["quant_blk"] = function(block) {
       stupid_debug("quant_func: ", block, "<undet yet>" );
 
@@ -182,8 +182,7 @@ export function setupBlocks(): Blockly.Toolbox {
     };
     upd_block_defs.push(quant_def_func(""));  //inp_str
   };
-  //quant_list.forEach( quant_func );
-  quant_func("")
+  quant_func();
 
 
   // wrap in parens if it has children... overnethusiastic but should be
@@ -196,7 +195,7 @@ export function setupBlocks(): Blockly.Toolbox {
     return content;
   };
   var wrap_state = (block, statement) => _wrapper(block, statement, (b,s) => Alloy.statementToCode(b,s)  );
-  var wrap_value = (block, statement) => _wrapper(block, statement, (b, s) => Alloy.valueToCode(b, s, 0) || " " );
+  var wrap_value = (block, statement) => _wrapper(block, statement, (b,s) => Alloy.valueToCode(b, s, 0) || " " );
 
 
   // unary formula operators
@@ -210,39 +209,42 @@ export function setupBlocks(): Blockly.Toolbox {
   un_op_list.forEach( un_op_func );
 
   // binary formula operators
-  function bin_op_func(inp_str) {
-    Alloy[inp_str] = function(block) {
+  function bin_op_func() {
+    Alloy["bool_bin_op_blk"] = function(block) {
+      var op_type = block.getFieldValue('slct_type_dropdown');
       var left = wrap_state(block, 'left_statement');
       var right = wrap_state(block, 'right_statement');
-      var code = left + ' ' + inp_str + ' ' + right;
+      var code = left + ' ' + op_type + ' ' + right;
       return code;
     };
-    upd_block_defs.push(bin_op_def_func(inp_str));
+    upd_block_defs.push(bin_op_def_func());
   }
-  bin_op_list.forEach( bin_op_func );
+  bin_op_func();  //bin_op_list.forEach( bin_op_func );
 
-  function compare_op_func(inp_str) {
-    Alloy[inp_str] = function(block) {
+  function compare_op_func() {
+    Alloy["var_bin_op_blk"] = function(block) {
+      var op_type = block.getFieldValue('slct_type_dropdown');
       var left  = wrap_value(block, 'left_value');
       var right = wrap_value(block, 'right_value');
-      var code = left + ' ' + inp_str + ' ' + right;
+      var code = left + ' ' + op_type + ' ' + right;
       return code;
     };
-    upd_block_defs.push(compare_op_def_func(inp_str));
+    upd_block_defs.push(compare_op_def_func());
   }
-  compare_op_list.forEach( compare_op_func ); // currently the same function
+  compare_op_func();  //compare_op_list.forEach( compare_op_func );
 
-  function set_bin_op_func(inp_) {
-    const [inp_str, inp_label] = op_internal_translate(inp_);
-    Alloy[inp_str] = function(block) {
+  function set_bin_op_func() {
+    Alloy["set_bin_op_blk"] = function(block) {
+      var op_type = block.getFieldValue('slct_type_dropdown');
+      //const [inp_str, inp_label] = op_internal_translate(inp_);
       var left  = wrap_value(block, 'left_value');
       var right = wrap_value(block, 'right_value');
-      var code = left + ' ' + inp_str + ' ' + right;
+      var code = left + ' ' + op_type + ' ' + right;
       return [code, 0];
     };
-    upd_block_defs.push(set_bin_op_def_func(inp_str, inp_label));
+    upd_block_defs.push(set_bin_op_def_func());
   }
-  set_bin_op_list.forEach( set_bin_op_func ); // currently the same function
+  set_bin_op_func(); //set_bin_op_list.forEach( set_bin_op_func );
 
 	Blockly.defineBlocksWithJsonArray(upd_block_defs);
 };
@@ -258,14 +260,7 @@ export function setupBlocks(): Blockly.Toolbox {
     blk.getInput('DUMMY_INPUT').removeField("VAR");
     gen_menu_ext_func.bind(blk)();
     const field_ref = blk.getField("VAR");
-    console.log("----------")
-    console.log(blk);
-    console.log(id);
-    console.log(blk.workspace.getVariableById(id))
-    console.log(field_ref)
-    //blk.getInput('DUMMY_INPUT').fieldRow.filter( x => x instanceof Blockly.FieldDropdown)[0];
     field_ref.doValueUpdate_(id);
-    console.log(field_ref)
     field_ref.forceRerender();
   }
 
@@ -305,7 +300,7 @@ export function setupBlocks(): Blockly.Toolbox {
           options.push([el.name, el.getId()]);
         }
         options.push(["----------------", "hjyuvtr_FAKE"])
-        options.push(["Create new variable", "hjyuvtr_CREATE_VAR"]);
+        options.push(["Create new variable name", "hjyuvtr_CREATE_VAR"]);
         options.push(["Rename just this to new name", "hjyuvtr_RENAME_THIS_VAR"]);
         options.push(["Rename every such variable", "hjyuvtr_RENAME_VAR"]);
         return options;
@@ -403,23 +398,41 @@ export function setupBlocks(): Blockly.Toolbox {
  */
 export function setupToolboxContents(block: ParseBlock) {
 
+  // various utility functions, and setup
   var toolbox = {
     "kind": "flyoutToolbox",
     "contents": [],
   };
 
-  toolbox["contents"] = [ {"kind": "label", "text": "Predefined Signatures:", "web-class": "toolbox_style", } ];
-  toolbox["contents"].push(...(block.fixed_set_names.map( vname => { return {
+  let generic_map_func = (blk) => { return {
+    "kind": "block",
+    "type": op_internal_translate(blk)[0]
+  }; };
+  let small_sep = { "kind": "sep", "gap": "8" };  // for man
+  let large_sep = { "kind": "sep", "gap": "32" }; // for mankind
+  let raw_push = (item) => { toolbox["contents"].push(item); };
+  let sep_insert = (item, sep) => { raw_push(item); raw_push(sep); };
+
+  let short_push = (item) => { sep_insert(item, small_sep); };
+  let generic_short_push = (item) => { short_push(generic_map_func(item)); };
+  let inter_concat = (list) => { list.flatMap(x => [x, small_sep]).slice(0, -1).forEach(raw_push); };
+  let short_end = () => { raw_push(small_sep); };
+  let large_end = () => { raw_push(large_sep); };
+
+  // instructor-created sigs, preds, etc
+  short_push({"kind": "label", "text": "Available Signatures:", "web-class": "toolbox_style", });
+  inter_concat(block.fixed_set_names.map( vname => { return {
     "kind": "block",
     "type": "fixed_get_predef_set",
     "fields": {
       "VAR": vname,
     },
-  }; })));
+  }; }) );
+  large_end();
 
-  toolbox["contents"].push(...[ {"kind": "label", "text": "Predefined Predicates:", "web-class": "toolbox_style", } ]);
+  short_push({"kind": "label", "text": "Available Predicates:", "web-class": "toolbox_style", });
   // TODO: Enforce types; implement named args; change the format for this all
-  toolbox["contents"].push(...Object.entries(block.fixed_predicates).filter(([k,v]) => !(block.fixed_predicates_inline[k])).map( ([key, value]) => { return {
+  inter_concat(Object.entries(block.fixed_predicates).filter(([k,v]) => !(block.fixed_predicates_inline[k])).map( ([key, value]) => { return {
     "kind": "block",
     "type": `fixed_pred_${value.length}`,
     "fields": {
@@ -427,7 +440,8 @@ export function setupToolboxContents(block: ParseBlock) {
     },
     //"data": JSON.stringify(value)     // using this here to track types
   }; }));
-  toolbox["contents"].push(...Object.entries(block.fixed_predicates).filter(([k,v]) => (block.fixed_predicates_inline[k])).map( ([key, value]) => { return {
+  short_end();
+  inter_concat(Object.entries(block.fixed_predicates).filter(([k,v]) => (block.fixed_predicates_inline[k])).map( ([key, value]) => { return {
     "kind": "block",
     "type": `fixed_pred_inline_${value.length}`,
     "fields": {
@@ -435,7 +449,9 @@ export function setupToolboxContents(block: ParseBlock) {
     },
     //"data": JSON.stringify(value)     // using this here to track types
   }; }));
+  large_end();
 
+  // brief interlude to add tooltips to predicates, don't mind me
   let fix_thing = function(block_type) {
     let former_init = Blockly.Blocks[block_type].init;
     Blockly.Blocks[block_type].init = function() {
@@ -462,49 +478,43 @@ export function setupToolboxContents(block: ParseBlock) {
     fix_thing(block_type);
   }
 
+  // okay, back to block defs: operators
+  short_push({"kind": "label", "text": "User Local Variables:", "web-class": "toolbox_style", });
+  // for(let var_type of creatable_var_types) { // look, there's only bound_var, okay?
+  inter_concat([
+    {
+      "kind": "block",
+      "type": "get_" +  "bound_var"   //var_type,
+    },
+    {
+      "kind": "button",
+      "text": "Clear Unused Variable Names",
+      "callbackKey": "clearExtraVariableCallback"
+    },
+  ]);
+  large_end();
 
-  toolbox["contents"].push(...[ {"kind": "label", "text": "User Local Variables:", "web-class": "toolbox_style", } ]);
-  for(let var_type of creatable_var_types) {
-    toolbox["contents"] = toolbox["contents"].concat([
-      {
-        "kind": "button",
-        "text": "Delete Unused Variables",
-        "callbackKey": "clearExtraVariableCallback"
-      },
-      {
-        "kind": "block",
-        "type": "get_" + var_type,
-      }
-    ]);
-  }
+  short_push({"kind": "label", "text": "Quantified Expressions:", "web-class": "toolbox_style" });
+  generic_short_push("quant_blk");  //generic_concat(quant_list);
+  large_end();
 
-  /*toolbox["contents"].push( ...[{
-    "kind": "sep",
-    "gap": "64"
-  },]);*/
+  short_push({"kind": "label", "text": "Boolean-Valued Operators:", "web-class": "toolbox_style", });
+  un_op_list.forEach(generic_short_push);
+  generic_short_push("bool_bin_op_blk");
+  generic_short_push("var_bin_op_blk");
+  large_end();
 
-  let generic_map_func = (blk) => { return {
-    "kind": "block",
-    "type": op_internal_translate(blk)[0]
-  }; };
-  let generic_concat = (list) => {
-    toolbox["contents"] = toolbox["contents"].concat(list.map(generic_map_func));
-  };
-
-  toolbox["contents"].push(...[ {"kind": "label", "text": "Quantified Expressions:", "web-class": "toolbox_style", } ]);
-  //generic_concat(quant_list);
-  toolbox["contents"].push(generic_map_func("quant_blk"));
-
-  toolbox["contents"].push(...[ {"kind": "label", "text": "Boolean-Valued Operators", "web-class": "toolbox_style", } ]);
-  generic_concat(bin_op_list);
-  generic_concat(un_op_list);
-  generic_concat(compare_op_list);
-
-  toolbox["contents"].push(...[ {"kind": "label", "text": "Set-Valued Operators", "web-class": "toolbox_style", } ]);
-  generic_concat(set_bin_op_list);
+  short_push({"kind": "label", "text": "Set-Valued Operators:", "web-class": "toolbox_style", });
+  generic_short_push("set_bin_op_blk");
+  large_end();
 
   // misc... none as of this comment
-  generic_concat(block_defs);
+  inter_concat(block_defs.map(generic_map_func));
+  // spacer at the end doesn't seem to actually add space, so empty label:
+  short_push({"kind": "label", "text": '\u200B', "web-class": "toolbox_style", });
+
+  console.log(toolbox);
+
   return toolbox;
 };
 
@@ -698,7 +708,7 @@ quant_def_func = (text) => { return {
       {
         "type": "field_dropdown",
         "name": "quant_type_dropdown",
-        "options": quant_list.map(x => [x,x])
+        "options": quant_list.map(x => op_internal_translate(x))
       },
     ],
     "inputsInline": true,
@@ -729,9 +739,9 @@ un_op_def_func = (text) => { return {
   "helpUrl": ""
 }; };
 
-bin_op_def_func = (text) => { return {
-  "type": text,
-  "message0": `%1 ${text} %2`,
+bin_op_def_func = () => { return {
+  "type": "bool_bin_op_blk",
+  "message0": `%3 %1 %2`,
   "args0": [
     {
       "type": "input_statement",
@@ -744,7 +754,12 @@ bin_op_def_func = (text) => { return {
       "name": "right_statement",
     //  "check": "Boolean",
       "align": "RIGHT"
-    }
+    },
+    {
+      "type": "field_dropdown",
+      "name": "slct_type_dropdown",
+      "options": bin_op_list.map(x => op_internal_translate(x))
+    },
   ],
   "inputsInline": false,
   "previousStatement": null,
@@ -754,9 +769,9 @@ bin_op_def_func = (text) => { return {
   "helpUrl": ""
 }; };
 
-compare_op_def_func = (text) => { return {
-  "type": text,
-  "message0": `%1 ${text} %2`,
+compare_op_def_func = () => { return {
+  "type": "var_bin_op_blk",
+  "message0": `%1 %3 %2`,
   "args0": [
     {
       "type": "input_value",
@@ -767,7 +782,12 @@ compare_op_def_func = (text) => { return {
       "type": "input_value",
       "name": "right_value",
       "check": "var"
-    }
+    },
+    {
+      "type": "field_dropdown",
+      "name": "slct_type_dropdown",
+      "options": compare_op_list.map(x => op_internal_translate(x))
+    },
   ],
   "inputsInline": true,
   "previousStatement": null,
@@ -778,9 +798,9 @@ compare_op_def_func = (text) => { return {
 }; };
 
 
-set_bin_op_def_func = (typetext, text) => { return {
-  "type": typetext,
-  "message0": `%1 ${text} %2`,
+set_bin_op_def_func = () => { return {
+  "type": "set_bin_op_blk",
+  "message0": `%1 %3 %2`,
   "args0": [
     {
       "type": "input_value",
@@ -791,7 +811,12 @@ set_bin_op_def_func = (typetext, text) => { return {
       "type": "input_value",
       "name": "right_value",
       "check": "set"
-    }
+    },
+    {
+      "type": "field_dropdown",
+      "name": "slct_type_dropdown",
+      "options": set_bin_op_list.map(x => { const xx = op_internal_translate(x); return [xx[1], xx[0]];})
+    },
   ],
   "output": "set",
   "inputsInline": true,

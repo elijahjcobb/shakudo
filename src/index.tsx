@@ -429,7 +429,7 @@ window.onload = () => {
 			}
 			return;
 		}
-		if(compare_op_list.includes(block.type)) { // check types match for == or !=
+		if(block.type == "var_bin_op_blk") { //compare_op_list.includes(block.type)
 			let type1 = descend_tree(parseBlock, block.getInputTargetBlock("left_value"), bound_names);
 			let type2 = descend_tree(parseBlock, block.getInputTargetBlock("right_value"), bound_names);
 			//if(type1 != type2)   throw new descend_tree_bounds__wrongTypeException(block);
@@ -440,15 +440,15 @@ window.onload = () => {
 			descend_tree(parseBlock, block.getInputTargetBlock("statement"), bound_names);
 			return;
 		}
-		if(bin_op_list.includes(block.type)) {
+		if(block.type == "bool_bin_op_blk") { //bin_op_list.includes(block.type)
 			descend_tree(parseBlock, block.getInputTargetBlock("left_statement"), bound_names);
 			descend_tree(parseBlock, block.getInputTargetBlock("right_statement"), bound_names);
 			return;
 		}
-		if(set_bin_op_list.map(l => (typeof(l) == 'string') ? l : l[0]).includes(block.type)) {
+		if(block.type == "set_bin_op_blk") {	//set_bin_op_list.map(l => (typeof(l) == 'string') ? l : l[0]).includes(block.type)
 			let type1 = descend_tree(parseBlock, block.getInputTargetBlock("left_value"), bound_names);
 			let type2 = descend_tree(parseBlock, block.getInputTargetBlock("right_value"), bound_names);
-			switch(block.type) {
+			switch(block.getFieldValue('slct_type_dropdown')) { //move the 'get this type' thing to alloy_generator?
 				case "-": return type1;		// strictly speaking this is correct, but it'll break strict pred-type checking
 				case "+": return Array.from(new Set( [...type1, ...type2] ));
 				case "&":
