@@ -513,8 +513,6 @@ export function setupToolboxContents(block: ParseBlock) {
   // spacer at the end doesn't seem to actually add space, so empty label:
   short_push({"kind": "label", "text": '\u200B', "web-class": "toolbox_style", });
 
-  console.log(toolbox);
-
   return toolbox;
 };
 

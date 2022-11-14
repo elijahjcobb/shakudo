@@ -39,7 +39,7 @@
 		"test": "react-scripts test",
 		"postinstall": "electron-builder install-app-deps",
 		"electron:dev": "concurrently \"cross-env BROWSER=none yarn start\" \"wait-on http://localhost:3000 && tsc -p electron -w\" \"wait-on http://localhost:3000 && tsc -p electron && electron .\"",
-		"electron:build": "yarn build && tsc -p electron && electron-builder",
+		"electron:build": "yarn build && tsc -p electron && cp electron/alloy/blockloy-alloy-integration.jar build/electron/alloy/blockloy-alloy-integration.jar && electron-builder",
 		"eject": "react-scripts eject"
 	},
 	"build": {
