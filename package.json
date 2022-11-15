@@ -43,13 +43,20 @@
 		"eject": "react-scripts eject"
 	},
 	"build": {
+		"appId": "com.example.shakudo",
 		"extends": null,
 		"files": [
 			"build/**/*"
 		],
 		"directories": {
 			"buildResources": "assets"
-		}
+		},
+		"extraResources": [
+			{
+				"from": "build/electron/alloy/blockloy-alloy-integration.jar",
+				"to": "blockloy-alloy-integration.jar"
+			}
+	  ]
 	},
 	"eslintConfig": {
 		"extends": [

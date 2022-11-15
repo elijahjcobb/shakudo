@@ -5,8 +5,10 @@
  * github.com/elijahjcobb
  */
 
+import * as Path from 'path';
 import * as ChildProcess from "child_process";
 import {BrowserWindow} from "electron";
+import * as Fs from 'fs';
 
 /**
  * This class handles half of the integration with Alloy. The rest can be found from the shakudo-integration repo.
@@ -25,8 +27,12 @@ export class AlloyIntegration {
 	 */
 	public constructor(path: string, window: BrowserWindow) {
 		this._window = window;
-		this._cache = [];
-		this._process = ChildProcess.spawn("java", ["-jar", __dirname + "/blockloy-alloy-integration.jar", path]);
+		this._cache = [];  // "-Ddebug=yes"
+    let inte_path = Path.resolve(Path.join(__dirname, "blockloy-alloy-integration.jar"));
+    if(! Fs.existsSync(inte_path)) {
+      inte_path = Path.resolve(Path.join(process.resourcesPath, "blockloy-alloy-integration.jar"));
+    }
+		this._process = ChildProcess.spawn("java", ["-jar", inte_path, path]);
 		this._process.stderr.on("data", this.onStdErr.bind(this));
 		this._process.stdout.on("data", this.onStdOut.bind(this));
 		this._process.on("close", this.onClose.bind(this));
