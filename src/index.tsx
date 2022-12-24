@@ -1,20 +1,17 @@
-/**
- * Imports
- */
+/**  Imports */
 import CodeMirror from "codemirror";
 import {BlocklyParse} from "./BlocklyParser";
 import Blockly from "blockly";
 import {setupBlocks, setupToolboxContents, setupToolboxWorkspace, Alloy, op_internal_translate,
 					binding_blocks, set_op_blocks,  quant_list, un_op_list, bin_op_list, compare_op_list, set_bin_op_list} from "./blocklyContent/alloy_generator"
 
-
-/**
- * Importing Styles.
- */
+/**  Importing Styles */
 import "./index.css";
 import "codemirror/lib/codemirror.css";
 import "codemirror/addon/selection/mark-selection.js"
 import "codemirror/theme/nord.css";
+
+
 
 // this isn't great practice, but Electron demands some replacement for prompt()
 //    and it's actually recommended in the Blockly code to replace this
@@ -26,215 +23,57 @@ Blockly.prompt = function(msg, defaultValue, callback) {
 };
 
 
+var glb = {   // globals. it ain't great design, but then, there's only one window
+  currentParse: null,         // BlocklyParse
+  selected_index: -1,         // number
+  listBlocklyWorkplaces: [],   // { div: HTMLElement, workspace: Blockly.WorkspaceSvg, block_index: number }
+
+  extra_mark_list: [],         // ?
+  editor: null,                  // : CodeMirror.Editor
+
+  shak_tabs_div: null,
+  blockly_container_div: null
+}
+
 
 const ipcRenderer = window.require("electron").ipcRenderer;
 
-/**
- * Hide the alert.
- */
-function hideAlert() {
-	const alert = document.getElementById("alert");
-	if (!alert) return;
-	alert.style.display = "none";
-}
-/**
- * Show an alert with a specific message.
- * @param message
- */
-function showAlert(message: string) {
-
-	const alertContent = document.getElementById("alert-content");
-	if (!alertContent) return;
-	alertContent.innerHTML = message;
-
-	const alert = document.getElementById("alert");
-	if (!alert) return;
-	alert.style.display = "flex";
-}
-/**
- * Initialize the alert.
- */
-function setupAlert() {
-	const alertElement = document.getElementById("alert");
-	if (!alertElement) return;
-	alertElement.style.display = "none";
-	alertElement.onclick = () => {
-		hideAlert();
-	};
-}
-
-
-
-var currentParse: BlocklyParse;
-var selected_index: number = -1;
-var listBlocklyWorkplaces: { div: HTMLElement, workspace: Blockly.WorkspaceSvg, block_index: number }[] = [];
-
 window.onresize = () => {
-	if(selected_index !== -1) {
-		Blockly.svgResize(listBlocklyWorkplaces[selected_index].workspace);
+	if(glb.selected_index !== -1) {
+		Blockly.svgResize(glb.listBlocklyWorkplaces[glb.selected_index].workspace);
 	}
 };
 
-/**
- * This is called when the window is loaded.
- */
+/**  This is called when the window is loaded.  */
 window.onload = () => {
-	const editor_div = document.getElementById("editor");
-	if (!editor_div) return;
-	const editor: CodeMirror.Editor = CodeMirror(editor_div, {
-		mode: {name: "javascript"},
-		theme: "nord",
-		lineNumbers: true,
-		lineWrapping: true,
-		spellcheck: true,
-		smartIndent: true,
-		indentUnit: 4,
-		indentWithTabs: true,
-		// readOnly: "nocursor",
-		electricChars: true,
 
-		styleSelectedText: true
-	});
+  /*   Construct the window */
+  global_make_editor();           // init glb.editor
+  global_setup_blank_blockly();   // init glb.*_div's
 
+  setupAlert(); // I really need to make these not all slightly different
+  error_popup_setup();
+  compile_error_popup_setup();
+  no_instance_popup_setup();
 
-	/*   Construct the editor window, esp on loading a file */
-
-	setupBlocks();
-	currentParse = BlocklyParse.parse("");
-
-	var blocklyDiv_container = document.getElementById("blocklyDiv_container");
-	if(!blocklyDiv_container) {throw new Error("Error: blocklyDiv_container not found");}
-	var shak_tabs_div = document.getElementById("shak_tabs");
-	if(!shak_tabs_div) {throw new Error("Error: shak_tabs not found in doc");}
-
-	function createWorkspace(block_index: number, workspace_index: number) {
-		const wrk_div = document.createElement("div");
-		wrk_div.id = "blocklyDiv_" + workspace_index;
-		wrk_div.classList.add("blocklyDiv");
-		wrk_div.hidden = true;
-		blocklyDiv_container.appendChild(wrk_div);
-
-		const currBlock = currentParse.locations[block_index].b;
-		const toolbox = setupToolboxContents(currBlock);
-		let workspace = Blockly.inject(wrk_div, {
-			toolbox: toolbox,
-			renderer: "custom_renderer",
-			theme: {
-				componentStyles: {
-					workspaceBackgroundColour: "#282C34",
-					flyoutBackgroundColour: "#21252b",
-					toolboxBackgroundColour: "#21252b"
-				}
-			}
-		});
-		workspace.setResizesEnabled(false);
-
-		setupToolboxWorkspace(currBlock, workspace);
-
-		listBlocklyWorkplaces.push({
-			div: wrk_div,
-			workspace: workspace,
-			block_index: block_index
-		});
-
-		/*
-		let hh_1 = workspace.newBlock("fixed_get_predef_set");
-		hh_1.setFieldValue("Persons", "VAR");
-		hh_1.initSvg(); hh_1.render();
-		let hh_2 = workspace.newBlock("all");
-		hh_2.initSvg(); hh_2.render();
-		hh_2.getInput("condition").connection.connect(hh_1.outputConnection);
-		let hh_3 = workspace.newBlock("fixed_pred_1");
-		hh_3.setFieldValue("testing", "VAR");
-		hh_3.initSvg(); hh_3.render();
-		hh_2.getInput("statement").connection.connect(hh_3.previousConnection);
-		let hh_4 = workspace.newBlock("get_bound_var");
-		//hh_4.setFieldValue("testing", "VAR");
-		hh_3.getInput("param_0").connection.connect(hh_4.outputConnection);
-		hh_4.initSvg(); hh_4.render();//*/
-
-	}
-
-	var _int_tab_onclick = function(tab_div) {
-		let old_div = shak_tabs_div.children.item(selected_index);
-		let new_index = parseInt(tab_div.dataset.workspace_index);
-		let old_wrk_div = listBlocklyWorkplaces[selected_index].div;
-		let tab_wrk_div = listBlocklyWorkplaces[new_index].div;
-
-		console.assert(document.getElementsByClassName("tab active").length === 1, "Onclick Err: 1");
-		console.assert(old_div === shak_tabs_div.getElementsByClassName("tab active")[0], "Onclick Err: 2");
-		console.assert(parseInt(old_div.dataset.workspace_index) === selected_index, "Onclick Err: 3" );
-		console.assert(selected_index === Array.prototype.indexOf.call(old_div.parentNode.children, old_div), "Onclick Err: 4");
-		console.assert(new_index === Array.prototype.indexOf.call(tab_div.parentNode.children, tab_div), "Onclick Err: 5");
-		console.assert(old_wrk_div.hidden === false, "Onclick Err: 6");
-		if(new_index !== selected_index) {console.assert(tab_wrk_div.hidden === true, "Onclick Err: 7");}
-
-		if(new_index !== selected_index) {
-			old_div.classList.remove("active");
-			tab_div.classList.add("active");
-			old_wrk_div.hidden = true;
-			tab_wrk_div.hidden = false;
-			selected_index = new_index;
-
-			// this is a HORRIBLE hack and I'm not sure why it works or is needed,
-			//   but various permutations of resize, render, etc all failed.
-			// upon window size changes -- I'm not sure which but opening dev tools
-			//  seemed to trigger it semi-consistently -- then switching tabs,
-			//  the other workspace's blocks would all be invisible (though present in
-			//  the html). Shifting window size sometimes fixed it, leading to this:
-			let temp_wrk = listBlocklyWorkplaces[new_index].workspace;
-			tab_wrk_div.style.width = '99%';  tab_wrk_div.style.height = '99%';
-			Blockly.svgResize(temp_wrk);
-			tab_wrk_div.style.width = '100%';  tab_wrk_div.style.height = '100%';
-			Blockly.svgResize(temp_wrk);
-		}
-
-		const _bli = listBlocklyWorkplaces[selected_index].block_index;
-		const _bls = currentParse.locations[_bli].s;
-		editor.scrollIntoView({line: Math.max(0,_bls - 6), ch:0});
-		editor.setCursor({line: _bls, ch:0});
-	};
-	function tab_onclick(tab_div) {
-		return function() {
-			_int_tab_onclick(tab_div);
-		};
-	}
-
-	function createTab(tabs_div: HTMLElement, block_index: number, workspace_index: number, tab_title: string) {
-		const tab_div = document.createElement("div");
-		tab_div.className = "tab";
-		tab_div.dataset.block_index = block_index;
-		tab_div.dataset.workspace_index = workspace_index;	// this should just be n for the nth tab
-		const tab_span = document.createElement("span");
-		tab_span.textContent = tab_title;
-		tab_div.appendChild(tab_span);
-		tabs_div.appendChild(tab_div);
-
-		tab_div.onclick = tab_onclick(tab_div);
-	}
-
-	// MUST be called before using getAllMarks()
-	// ALSO MUST do a setCursor(getCursor()) to clear selection, which also counts for some reason
-	let extra_mark_list = [];
-	function clear_extra_marks() {
-		const n = extra_mark_list.length;
-		for(let i = n-1; i >= 0; i--) {
-			extra_mark_list[i].clear();
-		}
-		extra_mark_list = [];
-	}
-
+  /*  Handle loading a new file by setting up editor/workplaces/etc  */
 	ipcRenderer.on("set", (event: any, message: any) => {
-		currentParse = BlocklyParse.parse(message);
-		editor.setValue(currentParse.dispLines.join("\n"));
+
+    /* parse the new content */
+		glb.currentParse = BlocklyParse.parse(message);
+		glb.editor.setValue(glb.currentParse.dispLines.join("\n"));
+
+    /* clear some stuff */
 		error_popup_hide();
 		no_instance_popup_hide();
-		blocklyDiv_container.innerHTML = "";
-		listBlocklyWorkplaces = [];
-		const tabs_div = document.createElement("div");
+		glb.blockly_container_div.innerHTML = "";
+		glb.listBlocklyWorkplaces = [];
 
+    /* setup the various workspaces and their tabs */
+		const tabs_div = document.createElement("div");
 		let i = 0; let j = 0;
-		for (const loc of currentParse.locations) {
+		for (const loc of glb.currentParse.locations) {
+      /* create the markers in the editor for each parse block */
 			let options = { className: "shakudo-block",
 											attributes: {
 												"data-block-type": (loc.b.editable ? "edit" : "text"),
@@ -245,212 +84,64 @@ window.onload = () => {
 											inclusiveLeft: true,
 											inclusiveRight: true
 										};
-			editor.markText({line: loc.s, ch: 0}, {line: loc.s + loc.l - 1, ch: editor.getLine(loc.s+loc.l-1).length}, options);
+			glb.editor.markText({line: loc.s, ch: 0}, {line: loc.s + loc.l - 1, ch: glb.editor.getLine(loc.s+loc.l-1).length}, options);
 
+      /* create the workspace and tab associated with a parse block */
 			if(loc.b.represented) {
-				createTab(tabs_div, i, j, (loc.b.title ? loc.b.title : `Block ${j}`)  );
-				createWorkspace(i, j); // should be the jth entry; other could add an index map or something
+				global_createTab(tabs_div, i, j, (loc.b.title ? loc.b.title : `Block ${j}`)  );
+				global_createWorkspace(i, j); // should be the jth entry; other could add an index map or something
 				++j;
 			}
-
 			++i;
 		}
-		shak_tabs_div.replaceWith(tabs_div);
-		tabs_div.className = "tabs"; tabs_div.id = "shak_tabs";
-		shak_tabs_div = tabs_div;
 
+    /* update the tabs pane */
+		glb.shak_tabs_div.replaceWith(tabs_div);
+		tabs_div.className = "tabs"; tabs_div.id = "shak_tabs";
+		glb.shak_tabs_div = tabs_div;
+
+    /* finish off setting up the 'initial' workspace */
 		if(j > 0) {
 			tabs_div.firstChild.classList.add("active");
-			listBlocklyWorkplaces[0].div.hidden = false;
-			selected_index = 0;
-			Blockly.svgResize(listBlocklyWorkplaces[0].workspace);
+			glb.listBlocklyWorkplaces[0].div.hidden = false;
+			glb.selected_index = 0;
+			Blockly.svgResize(glb.listBlocklyWorkplaces[0].workspace);
 
-			const _bls = currentParse.locations[listBlocklyWorkplaces[0].block_index].s;
+			const _bls = glb.currentParse.locations[glb.listBlocklyWorkplaces[0].block_index].s;
 			// todo: base on screen size, and maybe use pixels to put roughly to middle of scrn?
-			editor.scrollIntoView({line: Math.max(0, _bls - 20), ch:0});
-			editor.setCursor({line: _bls, ch:0});
+			glb.editor.scrollIntoView({line: Math.max(0, _bls - 20), ch:0});
+			glb.editor.setCursor({line: _bls, ch:0});
 		}
 
 	});
 
 
 	/*   Save the editor's contents  */
-
 	var get_save_callback = () => {
-		editor.setCursor(editor.getCursor("from"));
-		clear_extra_marks();
-		let marks = editor.getAllMarks();
-		let editorValue = editor.getValue().split("\n");
+		glb.editor.setCursor(glb.editor.getCursor("from"));
+		global_clear_extra_marks();
+		let marks = glb.editor.getAllMarks();
+		let editorValue = glb.editor.getValue().split("\n");
 		for(let i = 0; i < marks.length; ++i) {
 			let ffind = marks[i].find();
 			let ffrom = ffind["from"]["line"]; let fto = ffind["to"]["line"];
-			let iBlk = currentParse.locations[i].b;
+			let iBlk = glb.currentParse.locations[i].b;
 			iBlk.textLines = Array(fto+1-ffrom).fill().map((_,i) => editorValue[ffrom + i]);
 			iBlk.dirty = true;
 		}
-		currentParse.updateTextLines();
-		ipcRenderer.invoke("get-save",  currentParse.fullLines.join("\n")   ).catch(console.error);
+		glb.currentParse.updateTextLines();
+		ipcRenderer.invoke("get-save",  glb.currentParse.fullLines.join("\n")   ).catch(console.error);
 	};
 	ipcRenderer.on("get-save", get_save_callback);
 
 
 
 	/*   Compiling blocks -> alloy  */
-
-	var error_popup = document.getElementById("compile_popup");
-	var error_popup_content = error_popup.getElementsByClassName("compile_content")[0];
-	function error_popup_show(left, top, message) {
-		error_popup_content.innerHTML = message;
-		error_popup.style.left = left + "px";
-		error_popup.style.top = top + "px";
-		error_popup.classList.add("show");
-	};
-	function error_popup_hide() {
-		//if(last_error_select !== null) last_error_select.removeSelect();
-		error_popup.classList.remove("show");
-	};
-	error_popup.getElementsByClassName("popup_button")[0].addEventListener("click", error_popup_hide);
-
-	//var last_error_select = null;
-	function show_error_on_target_block(block, message) {
-		//last_error_select = block;
-		block.select();
-		let other_id = block.id;
-		let block_dom = document.querySelectorAll(`[data-id="${other_id}"]`)[0];	// surely there's a better way...
-		let position = block_dom.getBoundingClientRect();
-		error_popup_show(position.right + 20, position.top - 20, message);
-	};
-
-	var overlay = document.getElementById("screenflash");
-	var flash_palette = {"green": "#66ff00", "red": "red", "yellow": "#FFDB58"}
-	function flashWindow(color) {
-		let color_code = flash_palette[color];
-		overlay.style.backgroundColor = color_code;
-		overlay.style.animation = "";
-		overlay.style.animation = "screenflash 0.2s ease-out";
-		setTimeout( () => { overlay.style.animation = ""; }, 200);
-  };
-
-	/* used below, to check for incorrectly-bound variables */
-	function descend_tree_bounds__unboundException(blk) {
-		this.block = blk;
-		this.name = 'UnboundVarException';
-		this.message = "Block references a variable that isn't bound yet";
-	}
-	function descend_tree_bounds__wrongTypeException(blk) {
-		this.block = blk;
-		this.name = 'WrongTypeException';
-		this.message = "Block received the wrong type of input";
-	}
-	function descend_tree_bounds__rebindException(blk) {
-		this.block = blk;
-		this.name = 'RebindException';
-		this.message = "Rebinding the same name is discouraged";
-	}
-	function descend_tree(parseBlock, block, bound_names) {
-		/* console.log("-------"); console.log(" " + block + " "); console.log(block);
-		console.log(bound_names); console.log(block.type);
-		if(block.type.startsWith("get_")) { console.log(block.getFieldValue('VAR'))
-		} else if(binding_blocks.includes(block.type)) {	// quantifiers, atm
-			console.log(block.getFieldValue('NAME')); } //*/
-		// check if names are bound in get_ blocks, add bound vars in quants
-		//let this_level = [];
-
-		if(block.type.startsWith("get_")) {		// getter for user vars
-			let get_var_id = block.getFieldValue('VAR');
-			if( ! bound_names.hasOwnProperty(  get_var_id  )) {		// unbound variable
-				throw new descend_tree_bounds__unboundException(block);
-			}
-			return bound_names[get_var_id];
-		}
-		if(block.type.startsWith("fixed_get_")) {	// getter for sigs
-			// TODO: handle predefined variables.
-			// for now, just sigs -- assume set type
-			let get_fix_var_sig = block.getFieldValue('VAR');
-			return [[ get_fix_var_sig ]]; //ugh
-		}
-		if(binding_blocks.includes(block.type)) {	// quantifiers, atm
-			let bind_var = block.getFieldValue('VAR');
-			let bind_var_type = descend_tree(parseBlock,  block.getInputTargetBlock('condition'), bound_names);
-
-			if(bound_names.hasOwnProperty(bind_var)) throw new descend_tree_bounds__rebindException(block);
-			bound_names[bind_var] = bind_var_type;
-			//this_level.push(bind_var);
-
-			descend_tree(parseBlock, block.getInputTargetBlock("statement"), bound_names);
-
-			delete bound_names[bind_var];
-			return; // vertical connections are fine and all boolean, unless something's gone terribly wrong somehow
-		}
-		if(block.type.startsWith("fixed_pred_")) {	// fixed predicates
-			let pred_type = block.getFieldValue('VAR');
-			let want_types = parseBlock.fixed_predicates[pred_type];   //JSON.parse(block.data);
-			//console.log(want_types);
-			for(let i = 0; i < want_types.length; ++i) {
-				let child_block = block.getInputTargetBlock("param_" + i);
-				//console.log(child_block);
-				let child_type = descend_tree(parseBlock, child_block, bound_names);
-				//if(child_type != want_types[i])   throw new descend_tree_bounds__wrongTypeException(child_block);
-				let wtypes = [[ want_types[i] ]];  // TODO change, stopgap
-				//console.log(child_type);
-				//console.log(wtypes);
-				// TODO: add 'sig type A is a subset of sig type B'
-				// each of the child's OR'd clauses must be a superset (more fine) at least one of the wanted clauses
-				loop_outty:
-				for(const cs of child_type) {
-					for(const ws of wtypes) {
-						for(const wp of ws) {
-							for(const cp of cs) {
-								if(cp === wp) { continue loop_outty; }
-							} // god should strike me down for this code
-						}
-					}
-					throw new descend_tree_bounds__wrongTypeException(child_block);
-				}
-
-			}
-			return;
-		}
-		if(block.type == "var_bin_op_blk") { //compare_op_list.includes(block.type)
-			let type1 = descend_tree(parseBlock, block.getInputTargetBlock("left_value"), bound_names);
-			let type2 = descend_tree(parseBlock, block.getInputTargetBlock("right_value"), bound_names);
-			//if(type1 != type2)   throw new descend_tree_bounds__wrongTypeException(block);
-			// this should be a warning, but isn't technically an error
-			return;
-		}
-		if(un_op_list.includes(block.type)) {
-			descend_tree(parseBlock, block.getInputTargetBlock("statement"), bound_names);
-			return;
-		}
-		if(block.type == "bool_bin_op_blk") { //bin_op_list.includes(block.type)
-			descend_tree(parseBlock, block.getInputTargetBlock("left_statement"), bound_names);
-			descend_tree(parseBlock, block.getInputTargetBlock("right_statement"), bound_names);
-			return;
-		}
-		if(block.type == "set_bin_op_blk") {	//set_bin_op_list.map(l => (typeof(l) == 'string') ? l : l[0]).includes(block.type)
-			let type1 = descend_tree(parseBlock, block.getInputTargetBlock("left_value"), bound_names);
-			let type2 = descend_tree(parseBlock, block.getInputTargetBlock("right_value"), bound_names);
-			switch(block.getFieldValue('slct_type_dropdown')) { //move the 'get this type' thing to alloy_generator?
-				case "-": return type1;		// strictly speaking this is correct, but it'll break strict pred-type checking
-				case "+": return Array.from(new Set( [...type1, ...type2] ));
-				case "&":
-				  let rtype = [];
-					for(const ys of type2) {
-						for(const xs of type1) {
-							rtype.push(Array.from(new Set( [...xs, ...ys] )));
-						}
-					}
-					return rtype;
-			}
-		}
-		throw new Error("how did this happen");
-	};
-
 	function _on_cmd_compile() {
-		const tab_div = shak_tabs_div.children.item(selected_index);
-		const tab_wrk = listBlocklyWorkplaces[selected_index].workspace;
+		const tab_div = glb.shak_tabs_div.children.item(glb.selected_index);
+		const tab_wrk = glb.listBlocklyWorkplaces[glb.selected_index].workspace;
 		const source_index = parseInt(tab_div.dataset.block_index);
-		const tab_block = currentParse.locations[source_index].b;
+		const tab_block = glb.currentParse.locations[source_index].b;
 		let code = "";
 
 		/*  Check for compilation error/etc  */
@@ -459,8 +150,6 @@ window.onload = () => {
 			let other_block = tab_wrk.getTopBlocks()[1];
 			show_error_on_target_block(other_block, "Only one root block allowed!");
 			flashWindow("red");
-			//Alloy.init(tab_wrk);
-			//code = Alloy.blockToCode(tab_wrk.getTopBlocks()[0]);
 			return;
 		}
 		// Check for incomplete block structure
@@ -486,8 +175,8 @@ window.onload = () => {
 			}
 		}
 
-		//  Compile and update the editor
-		editor.setCursor(editor.getCursor("from"));
+		/*  Compile and update the editor */
+		glb.editor.setCursor(glb.editor.getCursor("from"));
 		error_popup_hide();
 		no_instance_popup_hide();
 		flashWindow("green");
@@ -496,42 +185,32 @@ window.onload = () => {
 
 		tab_block.textLines = rendered_text;
 		tab_block.dirty = true; tab_block.updateText();
-		//currentParse.updateTextLines();
-		clear_extra_marks();
-		let marks = editor.getAllMarks();
+		//glb.currentParse.updateTextLines();
+		global_clear_extra_marks();
+		let marks = glb.editor.getAllMarks();
 		let place = marks[source_index].find();
-		editor.replaceRange(tab_block.dispLines.join("\n"), place.from, place.to);
+		glb.editor.replaceRange(tab_block.dispLines.join("\n"), place.from, place.to);
 		return "success"
 	}
 	ipcRenderer.on("cmd-compile", _on_cmd_compile);
 
 
-
-
-
-	/* Misc  - handle on cmd-run-and-compile, handle-error-run, handle-error-compile, various errors */
-
+  /* handle get-run */
 	function _on_get_run() {
 		// this should actually only be done on pane switch, but meh
-		const tab_div = shak_tabs_div.children.item(selected_index);
-		const tab_wrk = listBlocklyWorkplaces[selected_index].workspace;
+		const tab_div = glb.shak_tabs_div.children.item(glb.selected_index);
+		const tab_wrk = glb.listBlocklyWorkplaces[glb.selected_index].workspace;
 		const source_index = parseInt(tab_div.dataset.block_index);
-		const tab_block = currentParse.locations[source_index].b;
-		currentParse.dirty_runners(tab_block.title);
-		/*let marks = editor.getAllMarks();
-		for(const runner of currentParse.runners) {
-			let place = marks[source_index].find();
-			editor.replaceRange(runner.dispLines.join("\n"), place.from, place.to)
-		}*/
+		const tab_block = glb.currentParse.locations[source_index].b;
+		glb.currentParse.dirty_runners(tab_block.title);
 
 		get_save_callback();	// calls update text lines, among other things
-		//editor.getValue()
-		const outcontent = currentParse.dispLines.join("\n");
-		//console.log(outcontent);
+		const outcontent = glb.currentParse.dispLines.join("\n");
 		ipcRenderer.invoke("get-run", outcontent).catch(console.error);
 	}
 	ipcRenderer.on("get-run", _on_get_run);
 
+  /* handle run-and-compile */
 	function _on_cmd_run_and_compile() {
 		let res = _on_cmd_compile();
 		if(res === "success") {
@@ -540,24 +219,7 @@ window.onload = () => {
 	}
 	ipcRenderer.on("cmd-run-and-compile", _on_cmd_run_and_compile);
 
-	var compile_run_error_popup = document.getElementById("compile_run_error_popup");
-	var crepi = compile_run_error_popup.getElementsByClassName("compile_run_error_popup_inner")[0];
-	var curr_comp_run_err_popu = null;
-	function compile_run_error_popup_show(msg) {
-		crepi.innerHTML = msg;
-		compile_run_error_popup.classList.add("show");
-	};
-	function compile_run_error_popup_hide() {
-		crepi.innerHTML = "";
-		compile_run_error_popup.classList.remove("show");
-		if(curr_comp_run_err_popu) {
-			const nnn = extra_mark_list.indexOf(curr_comp_run_err_popu);
-			if(nnn != -1) {  extra_mark_list.splice(nnn, 1); }
-			curr_comp_run_err_popu.clear();
-		}
-	};
-	compile_run_error_popup.getElementsByClassName("popup_button")[0].addEventListener("click", compile_run_error_popup_hide);
-
+  /* handle error run */
 	ipcRenderer.on("handle-error-run", (event: any, msg: string) => {
 		let mtch = msg.match(/Line ([0-9]+) column ([0-9]+)/);
 		if(mtch !== null) {
@@ -565,20 +227,20 @@ window.onload = () => {
 			let lnln = parseInt(mtch[1]);
 
 			let i=0;
-			for(; i < currentParse.full_locations.length
-							&& currentParse.full_locations[i].s < lnln; ++i) {}
-			i-=1; let tbs = currentParse.full_locations[i];
+			for(; i < glb.currentParse.full_locations.length
+							&& glb.currentParse.full_locations[i].s < lnln; ++i) {}
+			i-=1; let tbs = glb.currentParse.full_locations[i];
 			let offs = lnln - (tbs.s + (tbs.b.fullLines.length - tbs.b.textLines.length));
-			let tln = currentParse.locations[tbs.lb].s + offs;
+			let tln = glb.currentParse.locations[tbs.lb].s + offs;
 			try {
-				editor.setCursor(tln, 0, {scroll: true});
+				glb.editor.setCursor(tln, 0, {scroll: true});
 				const mmsg = msg.slice(msg.indexOf("\n")+1);
 				compile_run_error_popup_show(mmsg);
-				curr_comp_run_err_popu =
-					editor.markText(
+				let ccrep = glb.editor.markText(
 						{ch: 0, line: tln}, {ch: 1, line: tln+1},
 						{css: "background: red;"});
-				extra_mark_list.push(curr_comp_run_err_popu);
+        compile_error_popup_addpopu(ccrep);
+				glb.extra_mark_list.push(ccrep);
 
 				return;
 			} catch(e) {
@@ -589,24 +251,412 @@ window.onload = () => {
 		alert("Source code error, failed to compile. \nReason for failure:\n" + msg);
 	});
 
+  /* handle compile error */
 	ipcRenderer.on("handle-error-compile", (event: any, error: {msg: string, x1: number, x2: number, y1: number, y2: number}) => {
-		editor.setCursor(error.y1-1, error.x1 -1, {scroll: true});
+		glb.editor.setCursor(error.y1-1, error.x1 -1, {scroll: true});
 		showAlert(error.msg);
-		extra_mark_list.push(
-			editor.markText(
+		glb.extra_mark_list.push(
+			glb.editor.markText(
 				{ch: error.x1 - 1, line: error.y1-1}, {ch: error.x2, line: error.y1 -1},
 				{css: "background: red;"}));
 	});
 
-	var no_instance_popup = document.getElementById("no_instance_popup");
-	function no_instance_popup_show() {  no_instance_popup.classList.add("show");     };
-	function no_instance_popup_hide() {  no_instance_popup.classList.remove("show");	};
-	no_instance_popup.getElementsByClassName("popup_button")[0].addEventListener("click", no_instance_popup_hide);
 	ipcRenderer.on("handle-no-instance", () => {
 		flashWindow("yellow");
 		no_instance_popup_show();
 	});
-
-	setupAlert();
-
 };
+
+
+// --------------------------------------------------------------------
+/*   the non-boring alerts  */
+
+
+// TODO: setWarningText exists
+//var last_error_select = null;
+function show_error_on_target_block(block, message) {
+  //last_error_select = block;
+  block.select();
+  let other_id = block.id;
+  let block_dom = document.querySelectorAll(`[data-id="${other_id}"]`)[0];	// surely there's a better way...
+  let position = block_dom.getBoundingClientRect();
+  error_popup_show(position.right + 20, position.top - 20, message);
+};
+
+var flash_palette = {"green": "#66ff00", "red": "red", "yellow": "#FFDB58"}
+function flashWindow(color) {
+  var overlay = document.getElementById("screenflash");
+  let color_code = flash_palette[color];
+  overlay.style.backgroundColor = color_code;
+  overlay.style.animation = "";
+  overlay.style.animation = "screenflash 0.2s ease-out";
+  setTimeout( () => { overlay.style.animation = ""; }, 200);
+};
+
+
+// --------------------------------------------------------------------
+/*   descend_tree -- this should probably be a different file  */
+
+/* used below, to check for incorrectly-bound variables */
+function descend_tree_bounds__unboundException(blk) {
+  this.block = blk;
+  this.name = 'UnboundVarException';
+  this.message = "Block references a variable that isn't bound yet";
+}
+function descend_tree_bounds__wrongTypeException(blk) {
+  this.block = blk;
+  this.name = 'WrongTypeException';
+  this.message = "Block received the wrong type of input";
+}
+function descend_tree_bounds__rebindException(blk) {
+  this.block = blk;
+  this.name = 'RebindException';
+  this.message = "Rebinding the same name is discouraged";
+}
+
+
+function descend_tree(parseBlock, block, bound_names) {
+  /* console.log("-------"); console.log(" " + block + " "); console.log(block);
+  console.log(bound_names); console.log(block.type);
+  if(block.type.startsWith("get_")) { console.log(block.getFieldValue('VAR'))
+  } else if(binding_blocks.includes(block.type)) {	// quantifiers, atm
+    console.log(block.getFieldValue('NAME')); } //*/
+  // check if names are bound in get_ blocks, add bound vars in quants
+  //let this_level = [];
+
+  if(block.type.startsWith("get_")) {		// getter for user vars
+    let get_var_id = block.getFieldValue('VAR');
+    if( ! bound_names.hasOwnProperty(  get_var_id  )) {		// unbound variable
+      throw new descend_tree_bounds__unboundException(block);
+    }
+    return bound_names[get_var_id];
+  }
+  if(block.type.startsWith("fixed_get_")) {	// getter for sigs
+    // TODO: handle predefined variables.
+    // for now, just sigs -- assume set type
+    let get_fix_var_sig = block.getFieldValue('VAR');
+    return [[ get_fix_var_sig ]]; //ugh
+  }
+  if(binding_blocks.includes(block.type)) {	// quantifiers, atm
+    let bind_var = block.getFieldValue('VAR');
+    let bind_var_type = descend_tree(parseBlock,  block.getInputTargetBlock('condition'), bound_names);
+
+    if(bound_names.hasOwnProperty(bind_var)) throw new descend_tree_bounds__rebindException(block);
+    bound_names[bind_var] = bind_var_type;
+    //this_level.push(bind_var);
+
+    descend_tree(parseBlock, block.getInputTargetBlock("statement"), bound_names);
+
+    delete bound_names[bind_var];
+    return; // vertical connections are fine and all boolean, unless something's gone terribly wrong somehow
+  }
+  if(block.type.startsWith("fixed_pred_")) {	// fixed predicates
+    let pred_type = block.getFieldValue('VAR');
+    let want_types = parseBlock.fixed_predicates[pred_type];   //JSON.parse(block.data);
+    //console.log(want_types);
+    for(let i = 0; i < want_types.length; ++i) {
+      let child_block = block.getInputTargetBlock("param_" + i);
+      //console.log(child_block);
+      let child_type = descend_tree(parseBlock, child_block, bound_names);
+      //if(child_type != want_types[i])   throw new descend_tree_bounds__wrongTypeException(child_block);
+      let wtypes = [[ want_types[i] ]];  // TODO change, stopgap
+      //console.log(child_type);
+      //console.log(wtypes);
+      // TODO: add 'sig type A is a subset of sig type B'
+      // each of the child's OR'd clauses must be a superset (more fine) at least one of the wanted clauses
+      loop_outty:
+      for(const cs of child_type) {
+        for(const ws of wtypes) {
+          for(const wp of ws) {
+            for(const cp of cs) {
+              if(cp === wp) { continue loop_outty; }
+            } // god should strike me down for this code
+          }
+        }
+        throw new descend_tree_bounds__wrongTypeException(child_block);
+      }
+
+    }
+    return;
+  }
+  if(block.type == "var_bin_op_blk") { //compare_op_list.includes(block.type)
+    let type1 = descend_tree(parseBlock, block.getInputTargetBlock("left_value"), bound_names);
+    let type2 = descend_tree(parseBlock, block.getInputTargetBlock("right_value"), bound_names);
+    //if(type1 != type2)   throw new descend_tree_bounds__wrongTypeException(block);
+    // this should be a warning, but isn't technically an error
+    return;
+  }
+  if(un_op_list.includes(block.type)) {
+    descend_tree(parseBlock, block.getInputTargetBlock("statement"), bound_names);
+    return;
+  }
+  if(block.type == "bool_bin_op_blk") { //bin_op_list.includes(block.type)
+    descend_tree(parseBlock, block.getInputTargetBlock("left_statement"), bound_names);
+    descend_tree(parseBlock, block.getInputTargetBlock("right_statement"), bound_names);
+    return;
+  }
+  if(block.type == "set_bin_op_blk") {	//set_bin_op_list.map(l => (typeof(l) == 'string') ? l : l[0]).includes(block.type)
+    let type1 = descend_tree(parseBlock, block.getInputTargetBlock("left_value"), bound_names);
+    let type2 = descend_tree(parseBlock, block.getInputTargetBlock("right_value"), bound_names);
+    switch(block.getFieldValue('slct_type_dropdown')) { //move the 'get this type' thing to alloy_generator?
+      case "-": return type1;		// strictly speaking this is correct, but it'll break strict pred-type checking
+      case "+": return Array.from(new Set( [...type1, ...type2] ));
+      case "&":
+        let rtype = [];
+        for(const ys of type2) {
+          for(const xs of type1) {
+            rtype.push(Array.from(new Set( [...xs, ...ys] )));
+          }
+        }
+        return rtype;
+    }
+  }
+  throw new Error("how did this happen");
+};
+
+
+// --------------------------------------------------------------------
+/* handles creating and switching tabs */
+
+var _int_tab_onclick = function(tab_div) {
+  let old_div = glb.shak_tabs_div.children.item(glb.selected_index);
+  let new_index = parseInt(tab_div.dataset.workspace_index);
+  let old_wrk_div = glb.listBlocklyWorkplaces[glb.selected_index].div;
+  let tab_wrk_div = glb.listBlocklyWorkplaces[new_index].div;
+
+  console.assert(document.getElementsByClassName("tab active").length === 1, "Onclick Err: 1");
+  console.assert(old_div === glb.shak_tabs_div.getElementsByClassName("tab active")[0], "Onclick Err: 2");
+  console.assert(parseInt(old_div.dataset.workspace_index) === glb.selected_index, "Onclick Err: 3" );
+  console.assert(glb.selected_index === Array.prototype.indexOf.call(old_div.parentNode.children, old_div), "Onclick Err: 4");
+  console.assert(new_index === Array.prototype.indexOf.call(tab_div.parentNode.children, tab_div), "Onclick Err: 5");
+  console.assert(old_wrk_div.hidden === false, "Onclick Err: 6");
+  if(new_index !== glb.selected_index) {console.assert(tab_wrk_div.hidden === true, "Onclick Err: 7");}
+
+  if(new_index !== glb.selected_index) {
+    old_div.classList.remove("active");
+    tab_div.classList.add("active");
+    old_wrk_div.hidden = true;
+    tab_wrk_div.hidden = false;
+    glb.selected_index = new_index;
+
+    // this is a HORRIBLE hack and I'm not sure why it works or is needed,
+    //   but various permutations of resize, render, etc all failed.
+    // upon window size changes -- I'm not sure which but opening dev tools
+    //  seemed to trigger it semi-consistently -- then switching tabs,
+    //  the other workspace's blocks would all be invisible (though present in
+    //  the html). Shifting window size sometimes fixed it, leading to this:
+    let temp_wrk = glb.listBlocklyWorkplaces[new_index].workspace;
+    tab_wrk_div.style.width = '99%';  tab_wrk_div.style.height = '99%';
+    Blockly.svgResize(temp_wrk);
+    tab_wrk_div.style.width = '100%';  tab_wrk_div.style.height = '100%';
+    Blockly.svgResize(temp_wrk);
+  }
+
+  const _bli = glb.listBlocklyWorkplaces[glb.selected_index].block_index;
+  const _bls = glb.currentParse.locations[_bli].s;
+  glb.editor.scrollIntoView({line: Math.max(0,_bls - 6), ch:0});
+  glb.editor.setCursor({line: _bls, ch:0});
+};
+var _tab_onclick = function(tab_div) {
+  return function() {
+    _int_tab_onclick(tab_div);
+  };
+};
+
+function global_createTab(tabs_div: HTMLElement, block_index: number, workspace_index: number, tab_title: string) {
+	const tab_div = document.createElement("div");
+	tab_div.className = "tab";
+	tab_div.dataset.block_index = block_index;
+	tab_div.dataset.workspace_index = workspace_index;	// this should just be n for the nth tab
+	const tab_span = document.createElement("span");
+	tab_span.textContent = tab_title;
+	tab_div.appendChild(tab_span);
+	tabs_div.appendChild(tab_div);
+
+	tab_div.onclick = _tab_onclick(tab_div);
+}
+
+
+// --------------------------------------------------------------------
+/* handles setting up the editor */
+
+function global_make_editor() {
+  const editor_div = document.getElementById("editor");
+  if (!editor_div) return;
+  let editor = CodeMirror(editor_div, {
+    mode: {name: "javascript"},
+    theme: "nord",
+    lineNumbers: true,
+    lineWrapping: true,
+    spellcheck: true,
+    smartIndent: true,
+    indentUnit: 4,
+    indentWithTabs: true,
+    // readOnly: "nocursor",
+    electricChars: true,
+
+    styleSelectedText: true
+  });
+  glb.editor = editor;
+}
+
+
+function global_setup_blank_blockly() {
+  glb.blockly_container_div = document.getElementById("blocklyDiv_container");
+  if(! glb.blockly_container_div) {throw new Error("Error: blocklyDiv_container not found");}
+  glb.shak_tabs_div = document.getElementById("shak_tabs");
+  if(! glb.shak_tabs_div) {throw new Error("Error: shak_tabs not found in doc");}
+
+  setupBlocks();
+  glb.currentParse = BlocklyParse.parse("");
+}
+
+
+// --------------------------------------------------------------------
+/*   creates the workspace   */
+// note: if you've got any default blocks, they go here
+
+function global_createWorkspace(block_index: number, workspace_index: number) {
+  const wrk_div = document.createElement("div");
+  wrk_div.id = "blocklyDiv_" + workspace_index;
+  wrk_div.classList.add("blocklyDiv");
+  wrk_div.hidden = true;
+  glb.blockly_container_div.appendChild(wrk_div);
+
+  const currBlock = glb.currentParse.locations[block_index].b;
+  const toolbox = setupToolboxContents(currBlock);
+  let workspace = Blockly.inject(wrk_div, {
+    toolbox: toolbox,
+    renderer: "custom_renderer",
+    theme: {
+      componentStyles: {
+        workspaceBackgroundColour: "#282C34",
+        flyoutBackgroundColour: "#21252b",
+        toolboxBackgroundColour: "#21252b"
+      }
+    }
+  });
+  workspace.setResizesEnabled(false);
+
+  setupToolboxWorkspace(currBlock, workspace);
+
+  glb.listBlocklyWorkplaces.push({
+    div: wrk_div,
+    workspace: workspace,
+    block_index: block_index
+  });
+
+  _debug_default_blocks(workspace);
+}
+
+function _debug_default_blocks(workspace) {
+  /*
+  let hh_1 = workspace.newBlock("fixed_get_predef_set");
+  hh_1.setFieldValue("Persons", "VAR");
+  hh_1.initSvg(); hh_1.render();
+  let hh_2 = workspace.newBlock("all");
+  hh_2.initSvg(); hh_2.render();
+  hh_2.getInput("condition").connection.connect(hh_1.outputConnection);
+  let hh_3 = workspace.newBlock("fixed_pred_1");
+  hh_3.setFieldValue("testing", "VAR");
+  hh_3.initSvg(); hh_3.render();
+  hh_2.getInput("statement").connection.connect(hh_3.previousConnection);
+  let hh_4 = workspace.newBlock("get_bound_var");
+  //hh_4.setFieldValue("testing", "VAR");
+  hh_3.getInput("param_0").connection.connect(hh_4.outputConnection);
+  hh_4.initSvg(); hh_4.render();//*/
+}
+
+
+// --------------------------------------------------------------------
+/*   clears all current editor marks   */
+
+// MUST be called before using getAllMarks()
+// ALSO MUST do a setCursor(getCursor()) to clear selection, which also counts for some reason
+function global_clear_extra_marks() {
+  const n = glb.extra_mark_list.length;
+  for(let i = n-1; i >= 0; i--) {
+    glb.extra_mark_list[i].clear();
+  }
+  glb.extra_mark_list = [];
+}
+
+
+
+// --------------------------------------------------------------------
+/*   the boring alert stuff   */
+
+function hideAlert() {
+	const alert = document.getElementById("alert");
+	if (!alert) return;
+	alert.style.display = "none";
+}
+
+function showAlert(message: string) {
+	const alertContent = document.getElementById("alert-content");
+	if (!alertContent) return;
+	alertContent.innerHTML = message;
+	const alert = document.getElementById("alert");
+	if (!alert) return;
+	alert.style.display = "flex";
+}
+
+function setupAlert() {
+	const alertElement = document.getElementById("alert");
+	if (!alertElement) return;
+	alertElement.style.display = "none";
+	alertElement.onclick = () => { hideAlert(); };
+}
+
+// yeah... the alerts all work slightly differently and, yes, that *is* stupid
+
+function error_popup_setup() {
+  var error_popup = document.getElementById("compile_popup");
+  error_popup.getElementsByClassName("popup_button")[0].addEventListener("click", error_popup_hide);
+}
+
+function error_popup_show(left, top, message) {
+  var error_popup = document.getElementById("compile_popup");
+  var error_popup_content = error_popup.getElementsByClassName("compile_content")[0];
+  error_popup_content.innerHTML = message;
+  error_popup.style.left = left + "px";
+  error_popup.style.top = top + "px";
+  error_popup.classList.add("show");
+}
+
+function error_popup_hide() {
+  var error_popup = document.getElementById("compile_popup");
+  //if(last_error_select !== null) last_error_select.removeSelect();
+  error_popup.classList.remove("show");
+}
+
+
+var curr_comp_run_err_popu = null;
+function compile_error_popup_setup() {
+  compile_run_error_popup.getElementsByClassName("popup_button")[0].addEventListener("click", compile_run_error_popup_hide);
+}
+
+function compile_error_popup_addpopu(blah) { curr_comp_run_err_popu = blah; }
+
+function compile_run_error_popup_show(msg) {
+  var compile_run_error_popup = document.getElementById("compile_run_error_popup");
+  var crepi = compile_run_error_popup.getElementsByClassName("compile_run_error_popup_inner")[0];
+  crepi.innerHTML = msg;
+  compile_run_error_popup.classList.add("show");
+};
+
+function compile_run_error_popup_hide() {
+  var compile_run_error_popup = document.getElementById("compile_run_error_popup");
+  var crepi = compile_run_error_popup.getElementsByClassName("compile_run_error_popup_inner")[0];
+  crepi.innerHTML = "";
+  compile_run_error_popup.classList.remove("show");
+  if(curr_comp_run_err_popu) {
+    const nnn = glb.extra_mark_list.indexOf(curr_comp_run_err_popu);
+    if(nnn != -1) {  glb.extra_mark_list.splice(nnn, 1); }
+    curr_comp_run_err_popu.clear();
+  }
+};
+
+function no_instance_popup_show() {  document.getElementById("no_instance_popup").classList.add("show");     };
+function no_instance_popup_hide() {  document.getElementById("no_instance_popup").classList.remove("show");	};
+function no_instance_popup_setup() { document.getElementById("no_instance_popup").getElementsByClassName("popup_button")[0].addEventListener("click", no_instance_popup_hide); };
