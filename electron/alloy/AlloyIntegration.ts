@@ -1,10 +1,3 @@
-/**
- * Elijah Cobb
- * elijah@elijahcobb.com
- * elijahcobb.com
- * github.com/elijahjcobb
- */
-
 import * as Path from 'path';
 import * as ChildProcess from "child_process";
 import {BrowserWindow} from "electron";

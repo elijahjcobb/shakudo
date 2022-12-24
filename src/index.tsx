@@ -1,18 +1,11 @@
 /**
- * Elijah Cobb
- * elijah@elijahcobb.com
- * elijahcobb.com
- * github.com/elijahjcobb
- */
-
-/**
  * Imports
  */
 import CodeMirror from "codemirror";
 import {BlocklyParse} from "./BlocklyParser";
 import Blockly from "blockly";
 import {setupBlocks, setupToolboxContents, setupToolboxWorkspace, Alloy, op_internal_translate,
-					binding_blocks, set_op_blocks,  quant_list, un_op_list, bin_op_list, compare_op_list, set_bin_op_list} from "./alloy_generator"
+					binding_blocks, set_op_blocks,  quant_list, un_op_list, bin_op_list, compare_op_list, set_bin_op_list} from "./blocklyContent/alloy_generator"
 
 
 /**
@@ -104,7 +97,7 @@ window.onload = () => {
 	});
 
 
-	/*   Construct the eeditor window, esp on loading a file */
+	/*   Construct the editor window, esp on loading a file */
 
 	setupBlocks();
 	currentParse = BlocklyParse.parse("");
@@ -339,10 +332,6 @@ window.onload = () => {
   };
 
 	/* used below, to check for incorrectly-bound variables */
-//	function descend_tree_bounds__foundItException(blk) {
-//		this.block = blk;
-//		this.name = 'FoundItException';
-//	}
 	function descend_tree_bounds__unboundException(blk) {
 		this.block = blk;
 		this.name = 'UnboundVarException';
@@ -359,18 +348,11 @@ window.onload = () => {
 		this.message = "Rebinding the same name is discouraged";
 	}
 	function descend_tree(parseBlock, block, bound_names) {
-		/*
-		console.log("-------");
-		console.log(" " + block + " ");
-		console.log(block);
-		console.log(bound_names);
-		console.log(block.type);
-		if(block.type.startsWith("get_")) {
-			console.log(block.getFieldValue('VAR'))
+		/* console.log("-------"); console.log(" " + block + " "); console.log(block);
+		console.log(bound_names); console.log(block.type);
+		if(block.type.startsWith("get_")) { console.log(block.getFieldValue('VAR'))
 		} else if(binding_blocks.includes(block.type)) {	// quantifiers, atm
-			console.log(block.getFieldValue('NAME'));
-		}
-		//*/
+			console.log(block.getFieldValue('NAME')); } //*/
 		// check if names are bound in get_ blocks, add bound vars in quants
 		//let this_level = [];
 
@@ -527,7 +509,7 @@ window.onload = () => {
 
 
 
-	/* Misc */
+	/* Misc  - handle on cmd-run-and-compile, handle-error-run, handle-error-compile, various errors */
 
 	function _on_get_run() {
 		// this should actually only be done on pane switch, but meh

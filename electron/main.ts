@@ -142,7 +142,7 @@ async function createWindow() {
 					label: "View Github",
 					click: async () => {
 						const { shell } = require("electron");
-						await shell.openExternal("https://github.com/elijahjcobb/shakudo");
+						await shell.openExternal("https://github.com/mtu-shakudo/shakudo");
 					}
 				}
 			]

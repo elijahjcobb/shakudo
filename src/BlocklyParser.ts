@@ -1,11 +1,16 @@
-/**
- * Elijah Cobb
- * elijah@elijahcobb.com
- * elijahcobb.com
- * github.com/elijahjcobb
- */
+
+/*
+ "Table of Contents": ParseBlock and BlocklyParse
+   (yes, the names aren't great)
+   See each's head for a description of their purpose
+*/
 
 
+/*
+  * A ParseBlock represents a single "unit" of parsing a particular file
+  * This can be a section of undeditable text; or a section of text that is
+  *   replaced as the user interacts with the Blockly component; etc
+*/
 
 export const OParseBlockType = {
   TEXT: 0,    // uneditable text
@@ -149,6 +154,8 @@ export class ParseBlock {
   }
 
 }
+
+// ----------------------------------------------------------------------------
 
 /**
  * This class represents a particular parsing of the code.
