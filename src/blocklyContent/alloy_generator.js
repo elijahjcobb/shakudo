@@ -1,5 +1,5 @@
 import Blockly from "blockly"
-import {ParseBlock} from "./../BlocklyParser"
+import {ParseBlock} from "./BlocklyParser"
 
 import "./custom_dropdown.js"
 import "./custom_renderer.js"

@@ -326,6 +326,7 @@ span.CodeMirror-selectedtext {
   height: 100%;
   top: 0;
   left: 0;
+  z-index: 200;
 }
 
 @keyframes screenflash {
@@ -337,3 +338,39 @@ span.CodeMirror-selectedtext {
 
 
 /*# sourceMappingURL=index.css.map */
+
+
+
+
+#splashscreen {
+  position: fixed;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  background: #F66945;
+  opacity: 100%;
+  z-index: 100;
+}
+
+.splashscreen_welcomebox {
+  position: absolute;
+  width: 80%;
+  height: 60%;
+  top: 20%;
+  left: 10%;
+  background: #E5E5E5;
+
+  text-align: center;
+  color: #000000;
+}
+
+.splashscreen_horiz {
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-start;
+}
+
+.splashscreen_horiz div {
+  width: 30%;
+}

@@ -2,7 +2,7 @@
 import CodeMirror from "codemirror";
 import Blockly from "blockly";
 
-import {BlocklyParse} from "./BlocklyParser";
+import {BlocklyParse} from "./blocklyContent/BlocklyParser";
 import {setupBlocks, setupToolboxContents, setupToolboxWorkspace, Alloy } from "./blocklyContent/alloy_generator";
 import {descend_tree, descend_tree_bounds__unboundException, descend_tree_bounds__wrongTypeException, descend_tree_bounds__rebindException} from "./blocklyTranspilation/descend_tree";
 import {global_createTab} from "./blocklyTranspilation/tab_managing"
@@ -26,6 +26,8 @@ Blockly.prompt = function(msg, defaultValue, callback) {
 
 
 var glb = {   // globals. it ain't great design, but then, there's only one window
+  initialized: false,
+
   currentParse: null,         // BlocklyParse
   selected_index: -1,         // number
   listBlocklyWorkplaces: [],   // { div: HTMLElement, workspace: Blockly.WorkspaceSvg, block_index: number }
@@ -60,6 +62,10 @@ window.onload = () => {
 
   /*  Handle loading a new file by setting up editor/workplaces/etc  */
 	ipcRenderer.on("set", (event: any, message: any) => {
+    if(! glb.initialized) {
+      document.getElementById("splashscreen").remove();
+      glb.initialized = true;
+    }
 
     /* parse the new content */
 		glb.currentParse = BlocklyParse.parse(message);
@@ -140,6 +146,11 @@ window.onload = () => {
 
 	/*   Compiling blocks -> alloy  */
 	function _on_cmd_compile() {
+    if( ! glb.initialized) {
+      flashWindow("red");
+      return;
+    }
+
 		const tab_div = glb.shak_tabs_div.children.item(glb.selected_index);
 		const tab_wrk = glb.listBlocklyWorkplaces[glb.selected_index].workspace;
 		const source_index = parseInt(tab_div.dataset.block_index);
@@ -199,6 +210,11 @@ window.onload = () => {
 
   /* handle get-run */
 	function _on_get_run() {
+    if( ! glb.initialized) {
+      flashWindow("red");
+      return;
+    }
+
 		// this should actually only be done on pane switch, but meh
 		const tab_div = glb.shak_tabs_div.children.item(glb.selected_index);
 		const tab_wrk = glb.listBlocklyWorkplaces[glb.selected_index].workspace;
