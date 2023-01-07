@@ -51,7 +51,7 @@ export class AlloyIntegration {
 		} else if(code === 7) {
       this._window.webContents.send("handle-no-instance");
     } else {  // 1, currently
-      console.log(code);
+
     }
 	}
 

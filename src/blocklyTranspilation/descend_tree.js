@@ -16,9 +16,14 @@ export function descend_tree_bounds__rebindException(blk) {
   this.name = 'RebindException';
   this.message = "Rebinding the same name is discouraged";
 }
+export function descend_tree_bounds__unusedException(blk) {
+  this.block = blk;
+  this.name = 'UnusedException';
+  this.message = "This variable isn't used in the descendant scope.";
+}
 
 
-export function descend_tree(parseBlock, block, bound_names) {
+export function descend_tree(parseBlock, block, bound_names, used_names=new Set()) {
   /* console.log("-------"); console.log(" " + block + " "); console.log(block);
   console.log(bound_names); console.log(block.type);
   if(block.type.startsWith("get_")) { console.log(block.getFieldValue('VAR'))
@@ -32,6 +37,8 @@ export function descend_tree(parseBlock, block, bound_names) {
     if( ! bound_names.hasOwnProperty(  get_var_id  )) {		// unbound variable
       throw new descend_tree_bounds__unboundException(block);
     }
+    used_names.add(bound_names[get_var_id]);
+    console.log(used_names);
     return bound_names[get_var_id];
   }
   if(block.type.startsWith("fixed_get_")) {	// getter for sigs
@@ -42,13 +49,16 @@ export function descend_tree(parseBlock, block, bound_names) {
   }
   if(binding_blocks.includes(block.type)) {	// quantifiers, atm
     let bind_var = block.getFieldValue('VAR');
-    let bind_var_type = descend_tree(parseBlock,  block.getInputTargetBlock('condition'), bound_names);
+    let bind_var_type = descend_tree(parseBlock,  block.getInputTargetBlock('condition'), bound_names, used_names);
 
     if(bound_names.hasOwnProperty(bind_var)) throw new descend_tree_bounds__rebindException(block);
     bound_names[bind_var] = bind_var_type;
     //this_level.push(bind_var);
 
-    descend_tree(parseBlock, block.getInputTargetBlock("statement"), bound_names);
+    console.log(used_names);
+    descend_tree(parseBlock, block.getInputTargetBlock("statement"), bound_names, used_names);
+    console.log(used_names);
+    if(! used_names.delete(bound_names[bind_var])) throw new descend_tree_bounds__unusedException(block);
 
     delete bound_names[bind_var];
     return; // vertical connections are fine and all boolean, unless something's gone terribly wrong somehow
@@ -60,7 +70,7 @@ export function descend_tree(parseBlock, block, bound_names) {
     for(let i = 0; i < want_types.length; ++i) {
       let child_block = block.getInputTargetBlock("param_" + i);
       //console.log(child_block);
-      let child_type = descend_tree(parseBlock, child_block, bound_names);
+      let child_type = descend_tree(parseBlock, child_block, bound_names, used_names);
       //if(child_type != want_types[i])   throw new descend_tree_bounds__wrongTypeException(child_block);
       let wtypes = [[ want_types[i] ]];  // TODO change, stopgap
       //console.log(child_type);
@@ -83,24 +93,24 @@ export function descend_tree(parseBlock, block, bound_names) {
     return;
   }
   if(block.type == "var_bin_op_blk") { //compare_op_list.includes(block.type)
-    let type1 = descend_tree(parseBlock, block.getInputTargetBlock("left_value"), bound_names);
-    let type2 = descend_tree(parseBlock, block.getInputTargetBlock("right_value"), bound_names);
+    let type1 = descend_tree(parseBlock, block.getInputTargetBlock("left_value"), bound_names, used_names);
+    let type2 = descend_tree(parseBlock, block.getInputTargetBlock("right_value"), bound_names, used_names);
     //if(type1 != type2)   throw new descend_tree_bounds__wrongTypeException(block);
     // this should be a warning, but isn't technically an error
     return;
   }
   if(un_op_list.includes(block.type)) {
-    descend_tree(parseBlock, block.getInputTargetBlock("statement"), bound_names);
+    descend_tree(parseBlock, block.getInputTargetBlock("statement"), bound_names, used_names);
     return;
   }
   if(block.type == "bool_bin_op_blk") { //bin_op_list.includes(block.type)
-    descend_tree(parseBlock, block.getInputTargetBlock("left_statement"), bound_names);
-    descend_tree(parseBlock, block.getInputTargetBlock("right_statement"), bound_names);
+    descend_tree(parseBlock, block.getInputTargetBlock("left_statement"), bound_names, used_names);
+    descend_tree(parseBlock, block.getInputTargetBlock("right_statement"), bound_names, used_names);
     return;
   }
   if(block.type == "set_bin_op_blk") {	//set_bin_op_list.map(l => (typeof(l) == 'string') ? l : l[0]).includes(block.type)
-    let type1 = descend_tree(parseBlock, block.getInputTargetBlock("left_value"), bound_names);
-    let type2 = descend_tree(parseBlock, block.getInputTargetBlock("right_value"), bound_names);
+    let type1 = descend_tree(parseBlock, block.getInputTargetBlock("left_value"), bound_names, used_names);
+    let type2 = descend_tree(parseBlock, block.getInputTargetBlock("right_value"), bound_names, used_names);
     switch(block.getFieldValue('slct_type_dropdown')) { //move the 'get this type' thing to alloy_generator?
       case "-": return type1;		// strictly speaking this is correct, but it'll break strict pred-type checking
       case "+": return Array.from(new Set( [...type1, ...type2] ));

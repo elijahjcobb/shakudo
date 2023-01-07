@@ -4,7 +4,9 @@ import Blockly from "blockly";
 
 import {BlocklyParse} from "./blocklyContent/BlocklyParser";
 import {setupBlocks, setupToolboxContents, setupToolboxWorkspace, Alloy, isValidRoot } from "./blocklyContent/alloy_generator";
-import {descend_tree, descend_tree_bounds__unboundException, descend_tree_bounds__wrongTypeException, descend_tree_bounds__rebindException} from "./blocklyTranspilation/descend_tree";
+import {descend_tree,
+  descend_tree_bounds__unboundException, descend_tree_bounds__wrongTypeException, descend_tree_bounds__rebindException, descend_tree_bounds__unusedException}
+  from "./blocklyTranspilation/descend_tree";
 import {global_createTab} from "./blocklyTranspilation/tab_managing"
 
 /**  Importing Styles */
@@ -182,7 +184,7 @@ window.onload = () => {
 			try {
 				descend_tree(tab_block, block, {});
 			} catch(e) {
-				if(e instanceof descend_tree_bounds__unboundException || e instanceof descend_tree_bounds__wrongTypeException || e instanceof descend_tree_bounds__rebindException) {
+				if(e instanceof descend_tree_bounds__unboundException || e instanceof descend_tree_bounds__wrongTypeException || e instanceof descend_tree_bounds__rebindException || e instanceof descend_tree_bounds__unusedException) {
 					show_error_on_target_block(e.block, e.message);
 					flashWindow("red");
 					return;
@@ -394,15 +396,16 @@ function global_createWorkspace(block_index: number, workspace_index: number) {
 }
 
 function _debug_default_blocks(workspace) {
-  /*
+  //*
   let hh_1 = workspace.newBlock("fixed_get_predef_set");
-  hh_1.setFieldValue("Persons", "VAR");
+  hh_1.setFieldValue("Person", "VAR");
   hh_1.initSvg(); hh_1.render();
-  let hh_2 = workspace.newBlock("all");
+  let hh_2 = workspace.newBlock("quant_blk");
+  hh_2.setFieldValue("all", "quant_type_dropdown");
   hh_2.initSvg(); hh_2.render();
   hh_2.getInput("condition").connection.connect(hh_1.outputConnection);
   let hh_3 = workspace.newBlock("fixed_pred_1");
-  hh_3.setFieldValue("testing", "VAR");
+  hh_3.setFieldValue("employed", "VAR");
   hh_3.initSvg(); hh_3.render();
   hh_2.getInput("statement").connection.connect(hh_3.previousConnection);
   let hh_4 = workspace.newBlock("get_bound_var");
