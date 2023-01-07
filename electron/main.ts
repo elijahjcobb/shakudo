@@ -4,6 +4,8 @@ import * as isDev from "electron-is-dev";
 import * as fs from "fs";
 import {AlloyIntegration} from "./alloy/AlloyIntegration";
 
+//import smalltalk from 'smalltalk/bundle';
+
 /**
  * If move back to react, uncomment below for dev tools.
  */

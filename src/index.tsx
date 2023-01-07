@@ -21,7 +21,7 @@ import "codemirror/theme/nord.css";
 //    and it's actually recommended in the Blockly code to replace this
 // this exists particularly for the sake of 'create variable' in alloy_generator
 Blockly.prompt = function(msg, defaultValue, callback) {
-	ipcRenderer.invoke("get-open-prompt", msg).catch(console.error).then((r) => {
+	ipcRenderer.invoke("get-open-prompt", { title: msg }).catch(console.error).then((r) => {
 		callback(r);
 	});
 };

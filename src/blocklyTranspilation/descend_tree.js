@@ -38,7 +38,6 @@ export function descend_tree(parseBlock, block, bound_names, used_names=new Set(
       throw new descend_tree_bounds__unboundException(block);
     }
     used_names.add(bound_names[get_var_id]);
-    console.log(used_names);
     return bound_names[get_var_id];
   }
   if(block.type.startsWith("fixed_get_")) {	// getter for sigs
@@ -55,9 +54,7 @@ export function descend_tree(parseBlock, block, bound_names, used_names=new Set(
     bound_names[bind_var] = bind_var_type;
     //this_level.push(bind_var);
 
-    console.log(used_names);
     descend_tree(parseBlock, block.getInputTargetBlock("statement"), bound_names, used_names);
-    console.log(used_names);
     if(! used_names.delete(bound_names[bind_var])) throw new descend_tree_bounds__unusedException(block);
 
     delete bound_names[bind_var];
