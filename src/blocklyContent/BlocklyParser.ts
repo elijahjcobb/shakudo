@@ -39,6 +39,9 @@ export class ParseBlock {
   public dispLines: string;
   public fullLines: string;
 
+  public bonusMinus: int = 0; // extra previous lines marked
+  public bonusPlus: int = 0;  // extra post lines marked
+
   // note: position of blockly comments within a block are not guaranteed
   //   (but order is); they'll generally be moved to the beginning of the block
   public typeLine: string = "";   // a block-opener if present
@@ -124,6 +127,9 @@ export class ParseBlock {
           // we're not really using this anymore, but ah well
           this.allow_multiple = macroBlk.allow_multiple;
         }
+      } else if(shak_line == "bonus_line_marks") {
+        this.bonusMinus = parseInt(splitter[0]);
+        this.bonusPlus = parseInt(splitter[1]);
       }
     }
 
@@ -300,7 +306,7 @@ export class BlocklyParse {
     return line.split(shak_line + " ")[1]?.split(" ").map(l=>l.trim()).filter(e=>e.toString());
   }
 
-  static shakudo_comments = [ "edit", "text", "manual", "comment", "define_sig", "define_pred", "define_pred_inline", "allow_multiple", "run", "repl_cmd", "include_macro_block", "define_pred_desc", "define_pred_desc_inline" ];
+  static shakudo_comments = [ "edit", "text", "manual", "comment", "define_sig", "define_pred", "define_pred_inline", "allow_multiple", "run", "repl_cmd", "include_macro_block", "define_pred_desc", "define_pred_desc_inline", "bonus_line_marks"];
   static shakudo_comments_blockers = {  // as in "starts a block"
     "edit": OParseBlockType.EDIT,
     "text": OParseBlockType.TEXT,

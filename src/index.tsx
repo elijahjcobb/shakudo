@@ -81,29 +81,38 @@ window.onload = () => {
 
     /* setup the various workspaces and their tabs */
 		const tabs_div = document.createElement("div");
-		let i = 0; let j = 0;
-		for (const loc of glb.currentParse.locations) {
+		let i = 0; let j = 0; let k = 0;
+
+    function dumb_callback(loc) {
       /* create the markers in the editor for each parse block */
-			let options = { className: "shakudo-block",
-											attributes: {
-												"data-block-type": (loc.b.editable ? "edit" : "text"),
-												"data-block-index": i
-											},
-											readOnly: !loc.b.editable,
-											clearWhenEmpty: false,
-											inclusiveLeft: true,
-											inclusiveRight: true
-										};
-			glb.editor.markText({line: loc.s, ch: 0}, {line: loc.s + loc.l - 1, ch: glb.editor.getLine(loc.s+loc.l-1).length}, options);
+      let options = { className: "shakudo-block",
+                      attributes: {
+                        "data-block-type": (loc.b.editable ? "edit" : "text"),
+                        "data-block-index": i,
+                        "data-block-color": (k % 4)
+                      },
+                      readOnly: !loc.b.editable,
+                      clearWhenEmpty: false,
+                      inclusiveLeft: true,
+                      inclusiveRight: true
+                    };
+
+      const startPt = loc.s - loc.b.bonusMinus;
+      const endPt = loc.s + loc.l - 1 + loc.b.bonusPlus;
+      glb.editor.markText({line: startPt, ch: 0}, {line: endPt, ch: glb.editor.getLine(endPt).length}, options);
 
       /* create the workspace and tab associated with a parse block */
-			if(loc.b.represented) {
-				global_createTab(glb, tabs_div, i, j, (loc.b.title ? loc.b.title : `Block ${j}`)  );
-				global_createWorkspace(i, j); // should be the jth entry; other could add an index map or something
-				++j;
-			}
-			++i;
-		}
+      if(loc.b.represented) {
+        global_createTab(glb, tabs_div, i, j, (loc.b.title ? loc.b.title : `Block ${j}`), k );
+        global_createWorkspace(i, j); // should be the jth entry; other could add an index map or something
+        ++j;
+      }
+      ++i;
+      if(loc.b.editable) k++;
+    }   // hack so that the 'highlighting sections' go on top of
+    glb.currentParse.locations.filter(loc=>!loc.b.editable).forEach(dumb_callback);
+    glb.currentParse.locations.filter(loc=> loc.b.editable).forEach(dumb_callback);
+
 
     /* update the tabs pane */
 		glb.shak_tabs_div.replaceWith(tabs_div);

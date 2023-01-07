@@ -32,9 +32,21 @@ span.CodeMirror-selectedtext { background: #DC143C !important; }*/
 .shakudo-block[data-block-type="text"] {}
 
 .shakudo-block[data-block-type="edit"] {
-  background-color: #f2f1d5;
   color: #666782;
 }
+.shakudo-block[data-block-type="edit"].shakudo-block[data-block-color="0"] {
+  background-color: #E8E3F3;
+}
+.shakudo-block[data-block-type="edit"].shakudo-block[data-block-color="1"] {
+  background-color: #E6EE9C;
+}
+.shakudo-block[data-block-type="edit"].shakudo-block[data-block-color="2"] {
+  background-color: #DEF0F9;
+}
+.shakudo-block[data-block-type="edit"].shakudo-block[data-block-color="3"] {
+  background-color: #FEEBE5;
+}
+
 .CodeMirror-selected {
   background-color: #D3D3D3 !important;
 }
@@ -84,10 +96,16 @@ span.CodeMirror-selectedtext {
   background: #4d5055;
   color: #bcbdbf;
 }
+.App .tabs .tab.active[data-block_color="0"] { background: #E8E3F3; }
+.App .tabs .tab.active[data-block_color="1"] { background: #E6EE9C; }
+.App .tabs .tab.active[data-block_color="2"] { background: #DEF0F9; }
+.App .tabs .tab.active[data-block_color="3"] { background: #FEEBE5; }
 .App .tabs .tab.active {
   background: #61afef;
   color: #21252b;
+  border: dashed 2px #4d5055;
 }
+
 
 .App #blocklyDiv_container {
   width: 100%;
