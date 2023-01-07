@@ -62,6 +62,10 @@ export var expr_types = [ "statement_expr" ];
 export var binding_blocks =  ["quant_blk"];   // quant_list;
 export var set_op_blocks = set_bin_op_list;
 
+export function isValidRoot(block) {
+  return !( block.type.startsWith("get_") || block.type.startsWith("fixed_get_") );
+}
+
 // ---------------------------------------------------------
 
 export const Alloy = new Blockly.Generator('Alloy');

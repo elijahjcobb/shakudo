@@ -12,6 +12,8 @@ export class AlloyIntegration {
 	private readonly _process: ChildProcess.ChildProcessWithoutNullStreams;
 	private readonly _window: BrowserWindow;
 	private readonly _cache: string[];
+  private readonly _err_cache: string[];
+  private _err_triggered: boolean;
 
 	/**
 	 * Create a new alloy integration for a specific file.
@@ -21,6 +23,8 @@ export class AlloyIntegration {
 	public constructor(path: string, window: BrowserWindow) {
 		this._window = window;
 		this._cache = [];  // "-Ddebug=yes"
+    this._err_cache = [];
+    this._err_triggered = false;
     let inte_path = Path.resolve(Path.join(__dirname, "blockloy-alloy-integration.jar"));
     if(! Fs.existsSync(inte_path)) {
       inte_path = Path.resolve(Path.join(process.resourcesPath, "blockloy-alloy-integration.jar"));
@@ -46,6 +50,8 @@ export class AlloyIntegration {
 			this._cache.splice(0, this._cache.length);
 		} else if(code === 7) {
       this._window.webContents.send("handle-no-instance");
+    } else {  // 1, currently
+      console.log(code);
     }
 	}
 
@@ -55,9 +61,15 @@ export class AlloyIntegration {
 	 * @private
 	 */
 	private onStdErr(data: any): void {
-		const msg = data.toString();
-		console.error(msg);
-		this._window.webContents.send("handle-error-run", msg);
+    console.log(data.toString());
+		this._err_cache.push(data.toString());
+    if(!this._err_triggered) {
+      this._err_triggered = true;
+      setTimeout(() => {
+        this._window.webContents.send("handle-error-run", this._err_cache.join("\n"));
+        this._cache.splice(0, this._err_cache.length);  // ...=[]?
+      }, 100);
+    }
 	}
 
 	/**

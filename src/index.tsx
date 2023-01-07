@@ -3,7 +3,7 @@ import CodeMirror from "codemirror";
 import Blockly from "blockly";
 
 import {BlocklyParse} from "./blocklyContent/BlocklyParser";
-import {setupBlocks, setupToolboxContents, setupToolboxWorkspace, Alloy } from "./blocklyContent/alloy_generator";
+import {setupBlocks, setupToolboxContents, setupToolboxWorkspace, Alloy, isValidRoot } from "./blocklyContent/alloy_generator";
 import {descend_tree, descend_tree_bounds__unboundException, descend_tree_bounds__wrongTypeException, descend_tree_bounds__rebindException} from "./blocklyTranspilation/descend_tree";
 import {global_createTab} from "./blocklyTranspilation/tab_managing"
 
@@ -162,16 +162,19 @@ window.onload = () => {
 		if(tab_wrk.getTopBlocks().length > 1 && !tab_block.allow_multiple) {
 			let other_block = tab_wrk.getTopBlocks()[1];
 			show_error_on_target_block(other_block, "Only one root block allowed!");
-			flashWindow("red");
-			return;
+			flashWindow("red"); return;
 		}
 		// Check for incomplete block structure
 		for(let block of tab_wrk.getTopBlocks()) {
 			if(! block.allInputsFilled()) {
 				show_error_on_target_block(block, "Missing inputs -- incomplete block!");
-				flashWindow("red");
-				return;
+				flashWindow("red"); return;
 			}
+
+      if( ! isValidRoot(block)) {
+        show_error_on_target_block(block, "Invalid root block -- must be boolean-valued, not set- or var-valued");
+        flashWindow("red"); return;
+      }
 		}
 		// check for wrongly bound variables and wrong types
 		let fixed_vals = tab_block.fixed_set_names;	// the predefined sigs, for now
@@ -239,34 +242,39 @@ window.onload = () => {
 
   /* handle error run */
 	ipcRenderer.on("handle-error-run", (event: any, msg: string) => {
-		let mtch = msg.match(/Line ([0-9]+) column ([0-9]+)/);
-		if(mtch !== null) {
-			let error = {"y1": mtch[1],"x1": mtch[2],"y2": mtch[1],"x2": parseInt(mtch[2])+1 }; //todo change
-			let lnln = parseInt(mtch[1]);
+		try {  // why did this need to be in a try blk, again?
+      console.log("raw error msg received: " + msg);
+      let ccrep = null;
+      let mmsg = msg.split("at edu.")[0].trim();
 
-			let i=0;
-			for(; i < glb.currentParse.full_locations.length
-							&& glb.currentParse.full_locations[i].s < lnln; ++i) {}
-			i-=1; let tbs = glb.currentParse.full_locations[i];
-			let offs = lnln - (tbs.s + (tbs.b.fullLines.length - tbs.b.textLines.length));
-			let tln = glb.currentParse.locations[tbs.lb].s + offs;
-			try {
-				glb.editor.setCursor(tln, 0, {scroll: true});
-				const mmsg = msg.slice(msg.indexOf("\n")+1);
-				compile_run_error_popup_show(mmsg);
-				let ccrep = glb.editor.markText(
+      let mtch = mmsg.match(/Line ([0-9]+) column ([0-9]+)/i);
+  		if(mtch !== null) {
+  			let error = {"y1": parseInt(mtch[1]),"x1": parseInt(mtch[2]),"y2": parseInt(mtch[1]),"x2": parseInt(mtch[2])+1 }; //todo change
+  			let lnln = parseInt(mtch[1]);
+        let tln = lnln-1;
+
+        mmsg = mmsg.split(mtch[0])[1];
+        //if(mmsg[0] == ':') mmsg = mmsg.slice(1);
+        mmsg = mmsg.split(":\n"); mmsg = mmsg[mmsg.length-1];
+        mmsg.trim();
+
+        glb.editor.setCursor(tln, 0, {scroll: true});
+				ccrep = glb.editor.markText(
 						{ch: 0, line: tln}, {ch: 1, line: tln+1},
 						{css: "background: red;"});
-        compile_error_popup_addpopu(ccrep);
-				glb.extra_mark_list.push(ccrep);
+        glb.extra_mark_list.push(ccrep);
+  		}
 
-				return;
-			} catch(e) {
-				console.log("ERROR:: " + e);
-			}
-		}
-		flashWindow("red");
-		alert("Source code error, failed to compile. \nReason for failure:\n" + msg);
+      compile_run_error_popup_show(mmsg);
+      if(ccrep !== null) {
+        compile_error_popup_addpopu(ccrep);
+      }
+
+    } catch(e) {
+      console.log("ERROR:: " + e);
+      flashWindow("red");
+      alert("Unknown Source/Compilation Error");
+    }
 	});
 
   /* handle compile error */
@@ -490,6 +498,7 @@ function compile_run_error_popup_hide() {
     const nnn = glb.extra_mark_list.indexOf(curr_comp_run_err_popu);
     if(nnn != -1) {  glb.extra_mark_list.splice(nnn, 1); }
     curr_comp_run_err_popu.clear();
+    curr_comp_run_err_popu = null;
   }
 };
 
