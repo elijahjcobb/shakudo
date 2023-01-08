@@ -46,11 +46,11 @@ var _tab_onclick = function(glb, tab_div) {
   };
 };
 
-export function global_createTab(glb, tabs_div, block_index, workspace_index, tab_title, colorIndex) {
+export function global_createTab(glb, tabs_div, block_index, workspace_index, tab_title, colorIndex=null) {
 	const tab_div = document.createElement("div");
 	tab_div.className = "tab";
 	tab_div.dataset.block_index = block_index;
-  tab_div.dataset.block_color = colorIndex;
+  if(colorIndex !== null) tab_div.dataset.block_color = colorIndex;
 	tab_div.dataset.workspace_index = workspace_index;	// this should just be n for the nth tab
 	const tab_span = document.createElement("span");
 	tab_span.textContent = tab_title;

@@ -130,6 +130,7 @@ export class ParseBlock {
       } else if(shak_line == "bonus_line_marks") {
         this.bonusMinus = parseInt(splitter[0]);
         this.bonusPlus = parseInt(splitter[1]);
+        console.assert(this.bonusMinus>=0 && this.bonusPlus>=0, "Bonus lines must be strictly positive for now.");
       }
     }
 

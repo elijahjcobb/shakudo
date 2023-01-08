@@ -35,6 +35,7 @@ var glb = {   // globals. it ain't great design, but then, there's only one wind
   listBlocklyWorkplaces: [],   // { div: HTMLElement, workspace: Blockly.WorkspaceSvg, block_index: number }
 
   extra_mark_list: [],         // ?
+  highlight_mark_list: [],
   editor: null,                  // : CodeMirror.Editor
 
   shak_tabs_div: null,
@@ -83,24 +84,10 @@ window.onload = () => {
 		const tabs_div = document.createElement("div");
 		let i = 0; let j = 0; let k = 0;
 
-    function dumb_callback(loc) {
-      /* create the markers in the editor for each parse block */
-      let options = { className: "shakudo-block",
-                      attributes: {
-                        "data-block-type": (loc.b.editable ? "edit" : "text"),
-                        "data-block-index": i,
-                        "data-block-color": (k % 4)
-                      },
-                      readOnly: !loc.b.editable,
-                      clearWhenEmpty: false,
-                      inclusiveLeft: true,
-                      inclusiveRight: true
-                    };
 
-      const startPt = loc.s - loc.b.bonusMinus;
-      const endPt = loc.s + loc.l - 1 + loc.b.bonusPlus;
-      glb.editor.markText({line: startPt, ch: 0}, {line: endPt, ch: glb.editor.getLine(endPt).length}, options);
-
+    // add the 'default' marks that are used to track content, and create tabs/etc
+    for(let loc of glb.currentParse.locations) {
+      mark_callback_fn(loc, false, i, k);
       /* create the workspace and tab associated with a parse block */
       if(loc.b.represented) {
         global_createTab(glb, tabs_div, i, j, (loc.b.title ? loc.b.title : `Block ${j}`), k );
@@ -109,10 +96,9 @@ window.onload = () => {
       }
       ++i;
       if(loc.b.editable) k++;
-    }   // hack so that the 'highlighting sections' go on top of
-    glb.currentParse.locations.filter(loc=>!loc.b.editable).forEach(dumb_callback);
-    glb.currentParse.locations.filter(loc=> loc.b.editable).forEach(dumb_callback);
-
+    }
+    // add the highlight marks which have pretty colors for editable blocks
+    readd_marks(true);
 
     /* update the tabs pane */
 		glb.shak_tabs_div.replaceWith(tabs_div);
@@ -138,18 +124,20 @@ window.onload = () => {
 	/*   Save the editor's contents  */
 	var get_save_callback = () => {
 		glb.editor.setCursor(glb.editor.getCursor("from"));
-		global_clear_extra_marks();
+		global_clear_extra_marks(); global_clear_highlight_marks();
 		let marks = glb.editor.getAllMarks();
 		let editorValue = glb.editor.getValue().split("\n");
 		for(let i = 0; i < marks.length; ++i) {
 			let ffind = marks[i].find();
-			let ffrom = ffind["from"]["line"]; let fto = ffind["to"]["line"];
+			let ffrom = ffind["from"]["line"];
+      let fto = ffind["to"]["line"];
 			let iBlk = glb.currentParse.locations[i].b;
 			iBlk.textLines = Array(fto+1-ffrom).fill().map((_,i) => editorValue[ffrom + i]);
 			iBlk.dirty = true;
 		}
 		glb.currentParse.updateTextLines();
 		ipcRenderer.invoke("get-save",  glb.currentParse.fullLines.join("\n")   ).catch(console.error);
+    readd_marks(false);
 	};
 	ipcRenderer.on("get-save", get_save_callback);
 
@@ -212,12 +200,13 @@ window.onload = () => {
 
 		tab_block.textLines = rendered_text;
 		tab_block.dirty = true; tab_block.updateText();
-		//glb.currentParse.updateTextLines();
-		global_clear_extra_marks();
+		global_clear_extra_marks(); global_clear_highlight_marks();
 		let marks = glb.editor.getAllMarks();
 		let place = marks[source_index].find();
 		glb.editor.replaceRange(tab_block.dispLines.join("\n"), place.from, place.to);
-		return "success"
+    glb.currentParse.updateTextLines();
+    readd_marks(false);
+		return "success";
 	}
 	ipcRenderer.on("cmd-compile", _on_cmd_compile);
 
@@ -425,7 +414,7 @@ function _debug_default_blocks(workspace) {
 
 
 // --------------------------------------------------------------------
-/*   clears all current editor marks   */
+/*   some mark handling functions   */
 
 // MUST be called before using getAllMarks()
 // ALSO MUST do a setCursor(getCursor()) to clear selection, which also counts for some reason
@@ -435,6 +424,55 @@ function global_clear_extra_marks() {
     glb.extra_mark_list[i].clear();
   }
   glb.extra_mark_list = [];
+}
+
+function global_clear_highlight_marks() { //functonal programming says what? i say, lazy
+  const n = glb.highlight_mark_list.length;
+  for(let i = n-1; i >= 0; i--) {
+    glb.highlight_mark_list[i].clear();
+  }
+  glb.highlight_mark_list = [];
+}
+
+
+function mark_callback_fn(loc, count_bonus, i, k, startPt_=null, endPt_=null) {
+  /* create the markers in the editor for each parse block */
+  let options = { className: count_bonus ? "shakudo-block-highlight" : "shakudo-block",
+                  attributes: {
+                    "data-block-type": (loc.b.editable ? "edit" : "text"),
+                    "data-block-index": i
+                  },
+                  readOnly: !loc.b.editable,
+                  clearWhenEmpty: false,
+                  inclusiveLeft: true,
+                  inclusiveRight: true
+                };
+  let startPt = loc.s;
+  let endPt = loc.s + loc.l - 1;
+  if(startPt_ !== null) startPt = startPt_;
+  if(endPt_ !== null) endPt = endPt_;
+  if(count_bonus) {
+    options.attributes["data-block-color"] = (k % 4);
+    startPt -= loc.b.bonusMinus;
+    endPt += loc.b.bonusPlus;
+  }
+  let mrk = glb.editor.markText({line: startPt, ch: 0}, {line: endPt, ch: glb.editor.getLine(endPt).length}, options);
+  return mrk;
+}
+
+
+function readd_marks(first_time) {
+  let allmark_cards = glb.editor.getAllMarks();
+  let k=0; let i=0;
+  for(let loc of glb.currentParse.locations) {
+    if(loc.b.editable) {
+      let currBase = {from: null, to: null};
+      if(!first_time) { currBase = allmark_cards[i].find(); currBase.from = currBase.from.line; currBase.to = currBase.to.line; }
+      glb.highlight_mark_list.push(mark_callback_fn(loc, true, i, k, currBase.from, currBase.to));
+      ++k;
+    }
+    ++i;
+  }
 }
 
 
