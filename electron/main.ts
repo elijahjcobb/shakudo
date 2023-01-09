@@ -103,7 +103,7 @@ async function createWindow() {
 					}
 				},
 				{
-					label: "Compile & Run Current Tab",
+					label: "Compile and Run Current Tab",
 					accelerator: "CmdOrCtrl+J",
 					click: async () => {
 						win?.webContents.send("cmd-run-and-compile");

@@ -45,6 +45,16 @@ var glb = {   // globals. it ain't great design, but then, there's only one wind
 
 const ipcRenderer = window.require("electron").ipcRenderer;
 
+/*  a brief aside for handling the escape key */
+document.onkeydown = function(evt) {
+  evt = evt || window.event;
+  if (evt.keyCode == 27) {
+    error_popup_hide();
+    no_instance_popup_hide();
+    compile_run_error_popup_hide();
+  }
+};
+
 window.onresize = () => {
 	if(glb.selected_index !== -1) {
 		Blockly.svgResize(glb.listBlocklyWorkplaces[glb.selected_index].workspace);
