@@ -46,13 +46,14 @@ var glb = {   // globals. it ain't great design, but then, there's only one wind
 const ipcRenderer = window.require("electron").ipcRenderer;
 
 /*  a brief aside for handling the escape key */
+function mini_clear_callback() {
+  error_popup_hide();
+  no_instance_popup_hide();
+  compile_run_error_popup_hide();
+}
 document.onkeydown = function(evt) {
   evt = evt || window.event;
-  if (evt.keyCode == 27) {
-    error_popup_hide();
-    no_instance_popup_hide();
-    compile_run_error_popup_hide();
-  }
+  if (evt.keyCode == 27) mini_clear_callback();
 };
 
 window.onresize = () => {
@@ -100,7 +101,7 @@ window.onload = () => {
       mark_callback_fn(loc, false, i, k);
       /* create the workspace and tab associated with a parse block */
       if(loc.b.represented) {
-        global_createTab(glb, tabs_div, i, j, (loc.b.title ? loc.b.title : `Block ${j}`), k );
+        global_createTab(glb, tabs_div, i, j, (loc.b.title ? loc.b.title : `Block ${j}`), mini_clear_callback, k );
         global_createWorkspace(i, j); // should be the jth entry; other could add an index map or something
         ++j;
       }

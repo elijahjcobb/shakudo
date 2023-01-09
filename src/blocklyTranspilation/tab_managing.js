@@ -40,13 +40,14 @@ var _int_tab_onclick = function(glb, tab_div) {
   glb.editor.scrollIntoView({line: Math.max(0,_bls - 6), ch:0});
   glb.editor.setCursor({line: _bls, ch:0});
 };
-var _tab_onclick = function(glb, tab_div) {
+var _tab_onclick = function(glb, tab_div, clear_callback) {
   return function() {
     _int_tab_onclick(glb, tab_div);
+    clear_callback();
   };
 };
 
-export function global_createTab(glb, tabs_div, block_index, workspace_index, tab_title, colorIndex=null) {
+export function global_createTab(glb, tabs_div, block_index, workspace_index, tab_title, clear_callback, colorIndex=null) {
 	const tab_div = document.createElement("div");
 	tab_div.className = "tab";
 	tab_div.dataset.block_index = block_index;
@@ -57,5 +58,5 @@ export function global_createTab(glb, tabs_div, block_index, workspace_index, ta
 	tab_div.appendChild(tab_span);
 	tabs_div.appendChild(tab_div);
 
-	tab_div.onclick = _tab_onclick(glb, tab_div);
+	tab_div.onclick = _tab_onclick(glb, tab_div, clear_callback);
 }
