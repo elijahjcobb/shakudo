@@ -394,7 +394,7 @@ function global_createWorkspace(block_index: number, workspace_index: number) {
 }
 
 function _debug_default_blocks(workspace) {
-  //*
+  /*
   let hh_1 = workspace.newBlock("fixed_get_predef_set");
   hh_1.setFieldValue("Person", "VAR");
   hh_1.initSvg(); hh_1.render();
