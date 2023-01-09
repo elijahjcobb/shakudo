@@ -60,6 +60,7 @@ window.onresize = () => {
 	if(glb.selected_index !== -1) {
 		Blockly.svgResize(glb.listBlocklyWorkplaces[glb.selected_index].workspace);
 	}
+  mini_clear_callback();
 };
 
 /**  This is called when the window is loaded.  */
